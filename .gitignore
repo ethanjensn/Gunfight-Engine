@@ -1,0 +1,16 @@
+# Gradle cache
+.gradle/
+
+# Build output
+build/
+app/build/
+
+# OS / misc
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE (optional but recommended)
+.idea/
+.vscode/
+*.iml
