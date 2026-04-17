@@ -1,5 +1,8 @@
 package com.gunfight.engine.core;
 
+import com.gunfight.engine.ecs.Entity;
+import com.gunfight.engine.ecs.World;
+import com.gunfight.engine.ecs.components.Transform;
 import com.gunfight.engine.input.Input;
 import com.gunfight.engine.render.Render;
 import org.lwjgl.opengl.GL11;
@@ -23,6 +26,8 @@ public class Engine {
     private Input input;
     // Camera for view transformation (holds camera position)
     private Camera camera;
+    // ECS World for managing entities and components
+    private World world;
 
     /**
      * Starts the game engine main loop.
@@ -40,6 +45,19 @@ public class Engine {
 
         // Initialize camera
         camera = new Camera();
+
+        // Initialize ECS World
+        world = new World();
+
+        // Create triangle entity with Transform component
+        Entity triangle = new Entity();
+        world.addEntity(triangle);
+        world.addComponent(triangle, new Transform(0, 0, -2.0f));
+
+        // Create second triangle entity
+        Entity triangle2 = new Entity();
+        world.addEntity(triangle2);
+        world.addComponent(triangle2, new Transform(0.5f, 0, -2.0f));
 
         // Initialize the renderer (must be after OpenGL context is created)
         renderer = new Render();
@@ -111,6 +129,6 @@ public class Engine {
         // Clear the color buffer (screen)
         glClear(GL_COLOR_BUFFER_BIT);
 
-        renderer.render(camera);
+        renderer.render(world, camera);
     }
 }

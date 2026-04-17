@@ -1,6 +1,9 @@
 package com.gunfight.engine.render;
 
 import com.gunfight.engine.core.Camera;
+import com.gunfight.engine.ecs.Entity;
+import com.gunfight.engine.ecs.World;
+import com.gunfight.engine.ecs.components.Transform;
 import com.gunfight.engine.math.Vector3;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
@@ -13,7 +16,6 @@ public class Render {
     private int vbo;
     private int vao;
     private int shaderProgram;
-    private Vector3 position = new Vector3(0, 0, -2.0f);
     private float angle = 0.0f;
 
     /**
@@ -108,31 +110,18 @@ public class Render {
     }
 
     /**
-     * Renders the scene using the provided camera for view transformation.
+     * Renders the scene using ECS entities and camera for view transformation.
+     * Iterates over all entities and draws those with Transform components.
+     * @param world the ECS world containing entities and components
      * @param camera the camera to use for view transformation
      */
-    public void render(Camera camera) {
-        // Update position - move right steadily
-        position.x += 0.005f;
+    public void render(World world, Camera camera) {
         // Update angle - rotate continuously
         angle += 0.02f;
 
-        // Build rotation matrix
+        // Build rotation matrix (shared for all entities)
         float cos = (float) Math.cos(angle);
         float sin = (float) Math.sin(angle);
-
-        // Get translation components
-        float tx = position.x;
-        float ty = position.y;
-        float tz = position.z;
-
-        // Combined rotation + translation matrix
-        float[] transform = {
-            cos,  sin, 0, 0,
-           -sin,  cos, 0, 0,
-             0,    0,  1, 0,
-            tx,   ty, tz, 1
-        };
 
         // Build view matrix (camera moves opposite direction)
         // Negative camera position simulates camera movement
@@ -162,25 +151,34 @@ public class Render {
         glUseProgram(shaderProgram);
         glBindVertexArray(vao);
 
-        // Get the location of the transform uniform
-        int transformLoc = glGetUniformLocation(shaderProgram, "transform");
-
-        // Send the transformation matrix to the shader
-        glUniformMatrix4fv(transformLoc, false, transform);
-
-        // Get the location of the view uniform
+        // Send view and projection matrices (shared for all entities)
         int viewLoc = glGetUniformLocation(shaderProgram, "view");
-
-        // Send the view matrix to the shader
         glUniformMatrix4fv(viewLoc, false, view);
 
-        // Get the location of the projection uniform
         int projLoc = glGetUniformLocation(shaderProgram, "projection");
-
-        // Send the projection matrix to the shader
         glUniformMatrix4fv(projLoc, false, projection);
 
-        // Draw the triangle
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        // Iterate over all entities and draw those with Transform components
+        for (var entry : world.getEntityData().entrySet()) {
+            var components = entry.getValue();
+
+            if (components.containsKey(Transform.class)) {
+                Transform t = (Transform) components.get(Transform.class);
+
+                // Build transform matrix per entity (rotation + translation)
+                float[] transform = {
+                    cos,  sin, 0, 0,
+                   -sin,  cos, 0, 0,
+                     0,    0,  1, 0,
+                    t.x,   t.y, t.z, 1
+                };
+
+                int transformLoc = glGetUniformLocation(shaderProgram, "transform");
+                glUniformMatrix4fv(transformLoc, false, transform);
+
+                // Draw triangle
+                glDrawArrays(GL_TRIANGLES, 0, 3);
+            }
+        }
     }
 }
