@@ -11,6 +11,7 @@ public class Render {
     private int vbo;
     private int vao;
     private int shaderProgram;
+    private float time = 0.0f;
 
     /**
      * Initializes OpenGL buffers.
@@ -52,14 +53,16 @@ public class Render {
 
 
         // Vertex Shader Takes your vertex (x, y, z) and decides where it appears on screen
-        // aPos = your vertex
+        // aPos = your vertex, "I need vertex data at location 0"
         // gl_Position = where it goes on screen
         String vertexShaderSource = """
             #version 330 core
-            layout (location = 0) in vec3 aPos;
+            layout (location = 0) in vec3 aPos; 
+
+            uniform vec3 offset;
 
             void main() {
-                gl_Position = vec4(aPos, 1.0);
+                gl_Position = vec4(aPos + offset, 1.0);
             }
         """;
 
@@ -100,9 +103,24 @@ public class Render {
     }
 
     public void render() {
-        // USE the shader + draw
+        // Update time by 0.01 seconds each frame
+        time += 0.01f;
+        
+        // Use the shader program
         glUseProgram(shaderProgram);
         glBindVertexArray(vao);
+
+        // Set the offset uniform
+        // sin(time) → goes between -1 and 1
+        float xOffset = (float) Math.sin(time) * 0.5f;
+
+        // Get the location of the offset uniform
+        int offsetLocation = glGetUniformLocation(shaderProgram, "offset");
+
+        // Set the offset uniform
+        glUniform3f(offsetLocation, xOffset, 0.0f, 0.0f);
+
+        // Draw the triangle
         glDrawArrays(GL_TRIANGLES, 0, 3);
     }
 }
