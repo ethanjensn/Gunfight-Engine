@@ -1,5 +1,6 @@
 package com.gunfight.engine.core;
 
+import com.gunfight.engine.render.Render;
 import org.lwjgl.opengl.GL11;
 
 import static org.lwjgl.opengl.GL11.*;
@@ -14,6 +15,8 @@ public class Engine {
     private boolean running = false;
     // The game window managed by GLFW
     private Window window;
+    // The renderer for drawing graphics
+    private Render renderer;
 
     /**
      * Starts the game engine main loop.
@@ -25,6 +28,10 @@ public class Engine {
         // Create and initialize the game window
         window = new Window();
         window.init();
+
+        // Initialize the renderer (must be after OpenGL context is created)
+        renderer = new Render();
+        renderer.init();
 
         // Track the time of the last loop iteration
         long lastTime = System.nanoTime();
@@ -77,6 +84,7 @@ public class Engine {
     private void render() {
         // Clear the color buffer (screen)
         glClear(GL_COLOR_BUFFER_BIT);
-        // Rendering commands will go here
+        
+        renderer.render();
     }
 }
