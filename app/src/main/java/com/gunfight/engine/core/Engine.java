@@ -1,8 +1,10 @@
 package com.gunfight.engine.core;
 
+import com.gunfight.engine.input.Input;
 import com.gunfight.engine.render.Render;
 import org.lwjgl.opengl.GL11;
 
+import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 
 /**
@@ -17,6 +19,10 @@ public class Engine {
     private Window window;
     // The renderer for drawing graphics
     private Render renderer;
+    // Input system for keyboard handling (abstracts GLFW)
+    private Input input;
+    // Camera for view transformation (holds camera position)
+    private Camera camera;
 
     /**
      * Starts the game engine main loop.
@@ -28,6 +34,12 @@ public class Engine {
         // Create and initialize the game window
         window = new Window();
         window.init();
+
+        // Initialize input system
+        input = new Input(window.getHandle());
+
+        // Initialize camera
+        camera = new Camera();
 
         // Initialize the renderer (must be after OpenGL context is created)
         renderer = new Render();
@@ -75,6 +87,20 @@ public class Engine {
     private void update() {
         // Game logic updates will go here
         // Examples: move objects, check collisions, process input
+
+        // Camera control with WASD
+        if (input.isKeyPressed(GLFW_KEY_A)) {
+            camera.x -= 0.02f;
+        }
+        if (input.isKeyPressed(GLFW_KEY_D)) {
+            camera.x += 0.02f;
+        }
+        if (input.isKeyPressed(GLFW_KEY_W)) {
+            camera.y += 0.02f;
+        }
+        if (input.isKeyPressed(GLFW_KEY_S)) {
+            camera.y -= 0.02f;
+        }
     }
 
     /**
@@ -84,7 +110,7 @@ public class Engine {
     private void render() {
         // Clear the color buffer (screen)
         glClear(GL_COLOR_BUFFER_BIT);
-        
-        renderer.render();
+
+        renderer.render(camera);
     }
 }

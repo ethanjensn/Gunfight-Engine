@@ -1,5 +1,7 @@
 package com.gunfight.engine.render;
 
+import com.gunfight.engine.core.Camera;
+import com.gunfight.engine.math.Vector3;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
 import static org.lwjgl.opengl.GL11.glDrawArrays;
@@ -11,7 +13,8 @@ public class Render {
     private int vbo;
     private int vao;
     private int shaderProgram;
-    private float time = 0.0f;
+    private Vector3 position = new Vector3(0, 0, -2.0f);
+    private float angle = 0.0f;
 
     /**
      * Initializes OpenGL buffers.
@@ -57,12 +60,14 @@ public class Render {
         // gl_Position = where it goes on screen
         String vertexShaderSource = """
             #version 330 core
-            layout (location = 0) in vec3 aPos; 
+            layout (location = 0) in vec3 aPos;
 
-            uniform vec3 offset;
+            uniform mat4 transform;
+            uniform mat4 view;
+            uniform mat4 projection;
 
             void main() {
-                gl_Position = vec4(aPos + offset, 1.0);
+                gl_Position = projection * view * transform * vec4(aPos, 1.0);
             }
         """;
 
@@ -102,23 +107,78 @@ public class Render {
         glDeleteShader(fragmentShader);
     }
 
-    public void render() {
-        // Update time by 0.01 seconds each frame
-        time += 0.01f;
-        
+    /**
+     * Renders the scene using the provided camera for view transformation.
+     * @param camera the camera to use for view transformation
+     */
+    public void render(Camera camera) {
+        // Update position - move right steadily
+        position.x += 0.005f;
+        // Update angle - rotate continuously
+        angle += 0.02f;
+
+        // Build rotation matrix
+        float cos = (float) Math.cos(angle);
+        float sin = (float) Math.sin(angle);
+
+        // Get translation components
+        float tx = position.x;
+        float ty = position.y;
+        float tz = position.z;
+
+        // Combined rotation + translation matrix
+        float[] transform = {
+            cos,  sin, 0, 0,
+           -sin,  cos, 0, 0,
+             0,    0,  1, 0,
+            tx,   ty, tz, 1
+        };
+
+        // Build view matrix (camera moves opposite direction)
+        // Negative camera position simulates camera movement
+        float[] view = {
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+           -camera.x, -camera.y, -camera.z, 1
+        };
+
+        // Build projection matrix (perspective)
+        float fov = (float) Math.toRadians(70);
+        float aspect = 800.0f / 600.0f;
+        float near = 0.1f;
+        float far = 100.0f;
+
+        float f = (float) (1.0 / Math.tan(fov / 2));
+
+        float[] projection = {
+            f / aspect, 0, 0, 0,
+            0, f, 0, 0,
+            0, 0, (far + near) / (near - far), -1,
+            0, 0, (2 * far * near) / (near - far), 0
+        };
+
         // Use the shader program
         glUseProgram(shaderProgram);
         glBindVertexArray(vao);
 
-        // Set the offset uniform
-        // sin(time) → goes between -1 and 1
-        float xOffset = (float) Math.sin(time) * 0.5f;
+        // Get the location of the transform uniform
+        int transformLoc = glGetUniformLocation(shaderProgram, "transform");
 
-        // Get the location of the offset uniform
-        int offsetLocation = glGetUniformLocation(shaderProgram, "offset");
+        // Send the transformation matrix to the shader
+        glUniformMatrix4fv(transformLoc, false, transform);
 
-        // Set the offset uniform
-        glUniform3f(offsetLocation, xOffset, 0.0f, 0.0f);
+        // Get the location of the view uniform
+        int viewLoc = glGetUniformLocation(shaderProgram, "view");
+
+        // Send the view matrix to the shader
+        glUniformMatrix4fv(viewLoc, false, view);
+
+        // Get the location of the projection uniform
+        int projLoc = glGetUniformLocation(shaderProgram, "projection");
+
+        // Send the projection matrix to the shader
+        glUniformMatrix4fv(projLoc, false, projection);
 
         // Draw the triangle
         glDrawArrays(GL_TRIANGLES, 0, 3);

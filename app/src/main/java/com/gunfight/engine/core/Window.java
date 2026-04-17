@@ -69,6 +69,15 @@ public class Window {
     }
 
     /**
+     * Returns the native GLFW window handle.
+     * Used for input handling and other GLFW operations.
+     * @return the window handle
+     */
+    public long getHandle() {
+        return windowHandle;
+    }
+
+    /**
      * Updates the window by swapping buffers and processing input events.
      * Should be called once per frame after rendering.
      */
