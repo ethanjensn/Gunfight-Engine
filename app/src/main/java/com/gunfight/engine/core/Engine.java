@@ -3,6 +3,8 @@ package com.gunfight.engine.core;
 import com.gunfight.engine.ecs.Entity;
 import com.gunfight.engine.ecs.World;
 import com.gunfight.engine.ecs.components.Transform;
+import com.gunfight.engine.ecs.components.Velocity;
+import com.gunfight.engine.ecs.systems.MovementSystem;
 import com.gunfight.engine.input.Input;
 import com.gunfight.engine.render.Render;
 import org.lwjgl.opengl.GL11;
@@ -28,6 +30,8 @@ public class Engine {
     private Camera camera;
     // ECS World for managing entities and components
     private World world;
+    // Movement system for updating entity positions
+    private MovementSystem movementSystem;
 
     /**
      * Starts the game engine main loop.
@@ -53,15 +57,20 @@ public class Engine {
         Entity triangle = new Entity();
         world.addEntity(triangle);
         world.addComponent(triangle, new Transform(0, 0, -2.0f));
+        world.addComponent(triangle, new Velocity(0.005f, 0, 0));
 
         // Create second triangle entity
         Entity triangle2 = new Entity();
         world.addEntity(triangle2);
         world.addComponent(triangle2, new Transform(0.5f, 0, -2.0f));
+        world.addComponent(triangle2, new Velocity(-0.003f, 0, 0));
 
         // Initialize the renderer (must be after OpenGL context is created)
         renderer = new Render();
         renderer.init();
+
+        // Initialize movement system
+        movementSystem = new MovementSystem();
 
         // Track the time of the last loop iteration
         long lastTime = System.nanoTime();
@@ -84,6 +93,7 @@ public class Engine {
             // This catches up if rendering was slow, or skips if fast
             while (delta >= 1) {
                 update();
+                movementSystem.update(world);
                 delta--;
             }
 
