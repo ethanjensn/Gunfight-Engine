@@ -87,13 +87,14 @@ public class Engine {
             long now = System.nanoTime();
             // Add elapsed time to delta (normalized to update cycles)
             delta += (now - lastTime) / nsPerUpdate;
+            float deltaTime = (float) ((now - lastTime) / 1_000_000_000.0);
             lastTime = now;
 
             // Run update() once for each accumulated update cycle
             // This catches up if rendering was slow, or skips if fast
             while (delta >= 1) {
                 update();
-                movementSystem.update(world);
+                movementSystem.update(world, deltaTime);
                 delta--;
             }
 
