@@ -7,15 +7,21 @@ package com.gunfight.engine.core;
  */
 public class Camera {
 
-    // Camera position in 3D space
     public float x, y, z;
+
+    public float dirX = 0;
+    public float dirY = 0;
+    public float dirZ = -1;
+
+    public float yaw = -90.0f;
+    public float pitch = 0.0f;
 
     /**
      * Creates a new camera at the origin (0, 0, 0).
      */
     public Camera() {
-        this.x = 0;
-        this.y = 0;
-        this.z = 0;
+        this.dirX = 0;
+        this.dirY = 0;
+        this.dirZ = -1;
     }
 }

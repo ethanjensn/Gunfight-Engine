@@ -123,15 +123,56 @@ public class Render {
         float cos = (float) Math.cos(angle);
         float sin = (float) Math.sin(angle);
 
-        // Build view matrix (camera moves opposite direction)
-        // Negative camera position simulates camera movement
-        float[] view = {
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-           -camera.x, -camera.y, -camera.z, 1
-        };
+        // Extract camera position
+        float cx = camera.x;
+        float cy = camera.y;
+        float cz = camera.z;
 
+        // Extract camera direction vector
+        float dx = camera.dirX;
+        float dy = camera.dirY;
+        float dz = camera.dirZ;
+
+        // Forward vector (copy of direction)
+        float fx = dx;
+        float fy = dy;
+        float fz = dz;
+
+        // Normalize forward vector (make it unit length)
+        float flen = (float)Math.sqrt(fx*fx + fy*fy + fz*fz);
+        fx /= flen; fy /= flen; fz /= flen;
+
+        // World up vector (pointing up in world space)
+        float ux = 0, uy = 1, uz = 0;
+
+        // Calculate right vector using cross product: forward × up
+        // Cross product gives a vector perpendicular to both inputs
+        float rx = fy*uz - fz*uy;
+        float ry = fz*ux - fx*uz;
+        float rz = fx*uy - fy*ux;
+
+        // Normalize right vector
+        float rlen = (float)Math.sqrt(rx*rx + ry*ry + rz*rz);
+        rx /= rlen; ry /= rlen; rz /= rlen;
+
+        // Recompute true up vector using cross product: right × forward
+        // This ensures up is perpendicular to both right and forward
+        ux = ry*fz - rz*fy;
+        uy = rz*fx - rx*fz;
+        uz = rx*fy - ry*fx;
+
+        // Build view matrix (rotation + translation)
+        // Columns are: right, up, -forward (camera looks opposite to forward)
+        // Last column is translation (dot products for position)
+        float[] view = {
+            rx, ux, -fx, 0,  // Right vector (x, y, z, w)
+            ry, uy, -fy, 0,  // Up vector (x, y, z, w)
+            rz, uz, -fz, 0,  // Negative forward vector (x, y, z, w)
+            -(rx*cx + ry*cy + rz*cz),  // Translation X: -dot(right, cameraPos)
+            -(ux*cx + uy*cy + uz*cz),  // Translation Y: -dot(up, cameraPos)
+            (fx*cx + fy*cy + fz*cz),   // Translation Z: dot(forward, cameraPos)
+            1
+        };
         // Build projection matrix (perspective)
         float fov = (float) Math.toRadians(70);
         float aspect = 800.0f / 600.0f;
