@@ -11,6 +11,9 @@ public class World {
     // Maps entity IDs to their component maps
     // Each entity has a map of component types to component instances
     private Map<Integer, Map<Class<? extends Component>, Component>> entities = new HashMap<>();
+    
+    // List of systems that process entities
+    private List<System> systems = new ArrayList<>();
 
     /**
      * Registers a new entity in the world.
@@ -19,6 +22,24 @@ public class World {
      */
     public void addEntity(Entity entity) {
         entities.put(entity.getId(), new HashMap<>());
+    }
+    
+    /**
+     * Creates a new entity and registers it in the world.
+     * @return the newly created entity
+     */
+    public Entity createEntity() {
+        Entity entity = new Entity();
+        addEntity(entity);
+        return entity;
+    }
+    
+    /**
+     * Adds a system to the world.
+     * @param system the system to add
+     */
+    public void addSystem(System system) {
+        systems.add(system);
     }
 
     /**
@@ -56,5 +77,14 @@ public class World {
      */
     public Map<Integer, Map<Class<? extends Component>, Component>> getEntityData() {
         return entities;
+    }
+    
+    /**
+     * Updates all systems in the world.
+     */
+    public void update() {
+        for (System system : systems) {
+            system.update(this);
+        }
     }
 }

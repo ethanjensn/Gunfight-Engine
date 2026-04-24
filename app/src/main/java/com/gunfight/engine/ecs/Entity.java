@@ -20,6 +20,14 @@ public class Entity {
     }
 
     /**
+     * Creates an entity with a specific ID (for reconstructing from storage).
+     * @param id the entity ID
+     */
+    public Entity(int id) {
+        this.id = id;
+    }
+
+    /**
      * Returns the unique ID of this entity.
      * @return the entity ID
      */
