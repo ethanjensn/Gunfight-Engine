@@ -1,8 +1,5 @@
 package com.gunfight.engine.core;
 
-import com.gunfight.engine.ecs.World;
-import com.gunfight.engine.ecs.systems.MovementSystem;
-
 /**
  * Headless game engine that manages the game loop and ECS.
  * Runs independently without rendering or window management.
@@ -11,47 +8,34 @@ import com.gunfight.engine.ecs.systems.MovementSystem;
 public class Engine {
 
     private boolean running = false;
-    // ECS World for managing entities and components
-    private World world;
-    // Movement system for updating entity positions
-    private MovementSystem movementSystem;
 
     /**
      * Starts the game engine main loop.
      * Initializes the ECS World, then runs the game loop until stopped.
      */
     public void run() {
-        running = true;
+        running = true; // Set engine to running state
 
-        // Initialize ECS World
-        world = new World();
+        // Initialize timing variables for fixed timestep
+        long lastTime = System.nanoTime(); // Capture current time in nanoseconds
+        double nsPerTick = 1_000_000_000.0 / 60.0; // Nanoseconds per tick (60 ticks per second = ~16.67ms)
+        double delta = 0; // Accumulator for time passed, normalized to tick units
 
-        // Initialize movement system
-        movementSystem = new MovementSystem();
+        int tickCount = 0; // Counter to track total ticks
 
-        // Track the time of the last loop iteration
-        long lastTime = System.nanoTime();
-        // Nanoseconds per update: 1 second / 60 FPS = ~16.67ms per update
-        // This ensures game logic runs at a consistent 60 Hz
-        double nsPerUpdate = 1_000_000_000.0 / 60.0;
-
-        // Delta accumulator: tracks how many updates should run based on elapsed time
-        double delta = 0;
-
-        // Main game loop: continues while running
+        // Main game loop - runs until engine is stopped
         while (running) {
-            // Current time in nanoseconds
-            long now = System.nanoTime();
-            // Add elapsed time to delta (normalized to update cycles)
-            delta += (now - lastTime) / nsPerUpdate;
-            float deltaTime = (float) ((now - lastTime) / 1_000_000_000.0);
-            lastTime = now;
+            long now = System.nanoTime(); // Get current time
+            delta += (now - lastTime) / nsPerTick; // Add elapsed time to delta (converted to tick units)
+            lastTime = now; // Update lastTime for next iteration
 
-            // Run update() once for each accumulated update cycle
-            // This catches up if simulation was slow, or skips if fast
+            // Process one tick for each accumulated tick unit
+            // This ensures consistent tick rate even if frame time varies
             while (delta >= 1) {
-                update(deltaTime);
-                delta--;
+                update(); // Run game logic for this tick
+                tickCount++; // Increment tick counter
+                System.out.println("Tick: " + tickCount); // Log tick number
+                delta--; // Consume one tick unit from delta
             }
         }
     }
@@ -60,8 +44,8 @@ public class Engine {
      * Updates game logic.
      * Called at a fixed rate of 60 times per second.
      */
-    private void update(float deltaTime) {
-        movementSystem.update(world, deltaTime);
+    private void update() {
+        // later: ECS systems will run here
     }
 
     /**

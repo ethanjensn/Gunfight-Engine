@@ -43,7 +43,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = 'com.gunfight.game.GameMain'
+    mainClass = 'com.gunfight.engine.core.ServerMain'
 }
 
 tasks.named('test') {
