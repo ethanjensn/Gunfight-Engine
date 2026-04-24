@@ -8,12 +8,15 @@ import java.util.*;
  */
 public class World {
 
+    // List of all entity objects
+    private List<Entity> entities = new ArrayList<>();
+    
     // Maps entity IDs to their component maps
     // Each entity has a map of component types to component instances
-    private Map<Integer, Map<Class<? extends Component>, Component>> entities = new HashMap<>();
+    private Map<Integer, Map<Class<? extends Component>, Component>> componentData = new HashMap<>();
     
     // List of systems that process entities
-    private List<System> systems = new ArrayList<>();
+    private List<EcsSystem> systems = new ArrayList<>();
 
     /**
      * Registers a new entity in the world.
@@ -21,7 +24,8 @@ public class World {
      * @param entity the entity to add
      */
     public void addEntity(Entity entity) {
-        entities.put(entity.getId(), new HashMap<>());
+        entities.add(entity);
+        componentData.put(entity.getId(), new HashMap<>());
     }
     
     /**
@@ -38,7 +42,7 @@ public class World {
      * Adds a system to the world.
      * @param system the system to add
      */
-    public void addSystem(System system) {
+    public void addSystem(EcsSystem system) {
         systems.add(system);
     }
 
@@ -48,7 +52,7 @@ public class World {
      * @param component the component to add
      */
     public void addComponent(Entity entity, Component component) {
-        entities.get(entity.getId()).put(component.getClass(), component);
+        componentData.get(entity.getId()).put(component.getClass(), component);
     }
 
     /**
@@ -59,31 +63,31 @@ public class World {
      */
     @SuppressWarnings("unchecked")
     public <T extends Component> T getComponent(Entity entity, Class<T> type) {
-        return (T) entities.get(entity.getId()).get(type);
+        return (T) componentData.get(entity.getId()).get(type);
     }
 
     /**
-     * Returns all entity IDs in the world.
-     * @return collection of entity IDs
+     * Returns all entities in the world.
+     * @return list of entity objects
      */
-    public Collection<Integer> getEntities() {
-        return entities.keySet();
-    }
-
-    /**
-     * Returns the raw entity data map for iteration.
-     * Maps entity IDs to their component maps.
-     * @return the entities map
-     */
-    public Map<Integer, Map<Class<? extends Component>, Component>> getEntityData() {
+    public List<Entity> getEntities() {
         return entities;
+    }
+
+    /**
+     * Returns the raw component data map for iteration.
+     * Maps entity IDs to their component maps.
+     * @return the component data map
+     */
+    public Map<Integer, Map<Class<? extends Component>, Component>> getComponentData() {
+        return componentData;
     }
     
     /**
      * Updates all systems in the world.
      */
     public void update() {
-        for (System system : systems) {
+        for (EcsSystem system : systems) {
             system.update(this);
         }
     }

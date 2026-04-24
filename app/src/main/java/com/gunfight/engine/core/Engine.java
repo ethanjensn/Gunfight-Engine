@@ -3,6 +3,8 @@ package com.gunfight.engine.core;
 import com.gunfight.engine.ecs.Entity;
 import com.gunfight.engine.ecs.World;
 import com.gunfight.engine.ecs.systems.MovementSystem;
+import com.gunfight.game.components.DirectionComponent;
+import com.gunfight.game.systems.ShootSystem;
 import com.gunfight.engine.ecs.components.Transform;
 import com.gunfight.engine.ecs.components.Velocity;
 
@@ -48,6 +50,15 @@ public class Engine {
 
         world.addComponent(player, transform);
         world.addComponent(player, velocity);
+
+        // Direction (shooting right)
+        DirectionComponent dir = new DirectionComponent(1, 0); // shooting right
+        world.addComponent(player, dir);
+
+        // Systems
+        world.addSystem(new MovementSystem());
+        world.addSystem(new ShootSystem());
+
 
         // Main game loop
         while (running) {

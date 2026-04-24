@@ -1,7 +1,7 @@
 package com.gunfight.engine.ecs.systems;
 
 import com.gunfight.engine.ecs.Entity;
-import com.gunfight.engine.ecs.System;
+import com.gunfight.engine.ecs.EcsSystem;
 import com.gunfight.engine.ecs.World;
 import com.gunfight.engine.ecs.components.Transform;
 import com.gunfight.engine.ecs.components.Velocity;
@@ -10,7 +10,7 @@ import com.gunfight.engine.ecs.components.Velocity;
  * System that updates movement for entities with Transform and Velocity components.
  * Movement is now data-driven - each entity has its own velocity.
  */
-public class MovementSystem extends System {
+public class MovementSystem extends EcsSystem {
 
     /**
      * Updates all entities with Transform and Velocity components by applying velocity to position.
@@ -19,8 +19,7 @@ public class MovementSystem extends System {
      */
     @Override
     public void update(World world) {
-        for (Integer entityId : world.getEntities()) {
-            Entity entity = new Entity(entityId);
+        for (Entity entity : world.getEntities()) {
             Transform t = world.getComponent(entity, Transform.class);
             Velocity v = world.getComponent(entity, Velocity.class);
 
