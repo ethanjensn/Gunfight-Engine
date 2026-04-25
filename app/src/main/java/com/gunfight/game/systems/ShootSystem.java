@@ -5,6 +5,7 @@ import com.gunfight.engine.ecs.EcsSystem;
 import com.gunfight.engine.ecs.components.*;
 import com.gunfight.game.components.DirectionComponent;
 import com.gunfight.game.components.LifetimeComponent;
+import com.gunfight.game.components.ProjectileTag;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +43,7 @@ public class ShootSystem extends EcsSystem {
 
                 LifetimeComponent life = new LifetimeComponent(120); // 2 seconds at 60 TPS
                 world.addComponent(projectile, life);
+                world.addComponent(projectile, new ProjectileTag());
 
                 System.out.println("SHOT FIRED at x=" + pt.x + " y=" + pt.y);
             }

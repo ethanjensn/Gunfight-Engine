@@ -4,8 +4,10 @@ import com.gunfight.engine.ecs.Entity;
 import com.gunfight.engine.ecs.World;
 import com.gunfight.engine.ecs.systems.MovementSystem;
 import com.gunfight.game.components.DirectionComponent;
+import com.gunfight.game.components.HealthComponent;
 import com.gunfight.game.systems.ShootSystem;
 import com.gunfight.game.systems.LifetimeSystem;
+import com.gunfight.game.systems.CollisionSystem;
 import com.gunfight.engine.ecs.components.Transform;
 import com.gunfight.engine.ecs.components.Velocity;
 
@@ -56,9 +58,14 @@ public class Engine {
         DirectionComponent dir = new DirectionComponent(1, 0); // shooting right
         world.addComponent(player, dir);
 
+        // Health
+        HealthComponent hp = new HealthComponent(100);
+        world.addComponent(player, hp);
+
         // Systems
         world.addSystem(new ShootSystem());
         world.addSystem(new LifetimeSystem());
+        world.addSystem(new CollisionSystem());
 
 
         // Main game loop
