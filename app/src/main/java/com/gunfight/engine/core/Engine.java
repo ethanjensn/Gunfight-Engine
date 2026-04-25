@@ -5,6 +5,7 @@ import com.gunfight.engine.ecs.World;
 import com.gunfight.engine.ecs.systems.MovementSystem;
 import com.gunfight.game.components.DirectionComponent;
 import com.gunfight.game.systems.ShootSystem;
+import com.gunfight.game.systems.LifetimeSystem;
 import com.gunfight.engine.ecs.components.Transform;
 import com.gunfight.engine.ecs.components.Velocity;
 
@@ -56,8 +57,8 @@ public class Engine {
         world.addComponent(player, dir);
 
         // Systems
-        world.addSystem(new MovementSystem());
         world.addSystem(new ShootSystem());
+        world.addSystem(new LifetimeSystem());
 
 
         // Main game loop

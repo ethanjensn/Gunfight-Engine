@@ -27,6 +27,15 @@ public class World {
         entities.add(entity);
         componentData.put(entity.getId(), new HashMap<>());
     }
+
+    /**
+     * Removes an entity from the world.
+     * @param entity the entity to remove
+     */
+    public void removeEntity(Entity entity) {
+        entities.remove(entity);
+        componentData.remove(entity.getId());
+    }
     
     /**
      * Creates a new entity and registers it in the world.
