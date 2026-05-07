@@ -21,4 +21,10 @@ public class ComponentRegistry {
     public <T> T getComponent(Class<T> classType, int entityId) {
         return (T) components.get(classType).get(entityId);
     }
+
+    public void removeAllComponents(int entityId) {
+        for (Map<Integer, Object> componentMap : components.values()) {
+            componentMap.remove(entityId);
+        }
+    }
 }

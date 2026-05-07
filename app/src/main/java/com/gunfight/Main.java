@@ -2,6 +2,7 @@ package com.gunfight;
 
 import com.gunfight.engine.ComponentRegistry;
 import com.gunfight.engine.EntityManager;
+import com.gunfight.engine.GameWorld;
 import com.gunfight.data.HealthComponent;
 
 public class Main {
@@ -11,20 +12,20 @@ public class Main {
     }
     
     public static void main(String[] args) {
-        System.out.println(new Main().getGreeting());
+        GameWorld world = new GameWorld();
 
-        System.out.println("Testing ComponentRegistry...");
+        int player1 = world.createEntity();
 
-        ComponentRegistry registry = new ComponentRegistry();
-        EntityManager entityManager = new EntityManager();
+        world.addComponent(HealthComponent.class, player1, new HealthComponent(100));
 
-        int entityId = entityManager.createEntity();
-        registry.addComponent(HealthComponent.class, entityId, new HealthComponent(100));
+        System.out.println("Player 1's health and ID: " + world.getComponent(HealthComponent.class, player1).getHealth() + ", " + player1);
 
-        HealthComponent healthComponent = registry.getComponent(HealthComponent.class, entityId);
-        System.out.println("Entity ID: " + entityId);
-        System.out.println("Health: " + healthComponent.getHealth());
-
-        System.out.println("ComponentRegistry test completed.");
+        world.destroyEntity(player1);
+        
+        if (world.getComponent(HealthComponent.class, player1) == null) {
+            System.out.println("Player 1 destroyed - component is null as expected");
+        } else {
+            System.out.println("Health: " + world.getComponent(HealthComponent.class, player1).getHealth());
+        }
     }
 }
