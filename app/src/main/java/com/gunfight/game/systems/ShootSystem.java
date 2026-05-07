@@ -32,7 +32,12 @@ public class ShootSystem extends EcsSystem {
                 // create projectile
                 Entity projectile = world.createEntity();
 
-                Transform pt = new Transform(t.x, t.y);
+                float offset = 3.0f; // distance in front of player
+
+                Transform pt = new Transform(
+                    t.x + d.x * offset,
+                    t.y + d.y * offset
+                );
 
                 Velocity pv = new Velocity();
                 pv.x = d.x * 2; // projectile speed

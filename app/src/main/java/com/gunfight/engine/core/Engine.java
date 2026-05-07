@@ -46,9 +46,9 @@ public class Engine {
         transform.x = 0;
         transform.y = 0;
 
-        // Velocity (move right)
+        // Velocity (stationary)
         Velocity velocity = new Velocity();
-        velocity.x = 1;
+        velocity.x = 0;
         velocity.y = 0;
 
         world.addComponent(player, transform);
@@ -61,6 +61,22 @@ public class Engine {
         // Health
         HealthComponent hp = new HealthComponent(100);
         world.addComponent(player, hp);
+
+        // Player 2
+        Entity player2 = world.createEntity();
+
+        Transform t2 = new Transform(50, 0);
+
+        Velocity v2 = new Velocity(0, 0); // stationary for now
+
+        DirectionComponent d2 = new DirectionComponent(-1, 0); // shoots LEFT
+
+        HealthComponent hp2 = new HealthComponent(100);
+
+        world.addComponent(player2, t2);
+        world.addComponent(player2, v2);
+        world.addComponent(player2, d2);
+        world.addComponent(player2, hp2);
 
         // Systems
         world.addSystem(new ShootSystem());
