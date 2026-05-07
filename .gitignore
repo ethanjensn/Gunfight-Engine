@@ -26,3 +26,4 @@ build
 
 # Ignore Kotlin plugin data
 .kotlin
+ENGINE_BUILDING_GUIDE.md

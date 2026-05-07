@@ -5,18 +5,23 @@
 
 ```
 Gunfight-Engine/
-├── adrs/                        # Architecture Decision Records
-├── src/
-│   ├── main/
-│   │   ├── java/com/gunfight/
-│   │   │   ├── engine/          # Core: Engine, EntityManager, GameLoop
-│   │   │   ├── data/            # Components: HealthComponent, PositionComponent, VelocityComponent
-│   │   │   ├── logic/           # Systems: MovementSystem, CombatSystem
-│   │   │   ├── net/             # Networking: GameServer
-│   │   │   └── Main.java        # Entry point
-│   │   └── resources/           # Config files (JSON/YAML)
-│   └── test/
-│       └── java/com/gunfight/   # Unit tests
+├── app/
+│   ├── bin/
+│   │   ├── main/
+│   │   └── test/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/gunfight/
+│   │   │   │   ├── engine/          # Core: Engine, EntityManager, GameLoop
+│   │   │   │   ├── data/            # Components ("Attachments"): HealthComponent, PositionComponent, VelocityComponent
+│   │   │   │   ├── logic/           # Systems: MovementSystem, CombatSystem
+│   │   │   │   ├── net/             # Networking: GameServer
+│   │   │   │   └── Main.java        # Entry point
+│   │   │   └── resources/           # Config files (JSON/YAML)
+│   │   └── test/
+│   │       └── java/com/gunfight/   # Unit tests
+│   │           └── AppTest.java
+│   └── build.gradle
 ├── build.gradle
 ├── settings.gradle
 └── README.md
