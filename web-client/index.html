@@ -1,34 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Gunfight WebSocket Test</title>
+    <title>Gunfight 2v2 Shooter</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #222; color: white; font-family: sans-serif; }
+        canvas { border: 2px solid #444; background: #333; }
+        #info { margin: 10px; }
+    </style>
 </head>
 <body>
-    <h1>Gunfight Engine Tester</h1>
-    <p>Press WASD to send data. Open F12 (Console) to see the logs.</p>
+    <div id="info">
+        <h1>Gunfight Engine</h1>
+        <p>Use WASD to move your square. Green = you, Blue = teammate, Red = enemy.</p>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <script>
-        // 1. Connect to your Java server (assuming it will run on port 8080)
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
         const socket = new WebSocket("ws://localhost:8080");
 
+        let localPlayerId = null;
+        let players = [];
+        const keys = {};
+        const PLAYER_SIZE = 32;
+
         socket.onopen = () => {
-            console.log("Connected to Java Engine!");
+            console.log("Connected to server!");
         };
 
-        // 2. Handle WASD key presses
-        const keys = {};
-        
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.players) {
+                players = data.players;
+                // Set local player ID from first received packet if not set
+                if (localPlayerId === null && players.length > 0) {
+                    // We'll determine local player by matching connection - for now, first player is local
+                    localPlayerId = players[0].id;
+                }
+            }
+        };
+
+        // WASD input handling
         window.addEventListener('keydown', (e) => {
             if (e.repeat) return;
             keys[e.key] = true;
             sendInput();
         });
-        
+
         window.addEventListener('keyup', (e) => {
             keys[e.key] = false;
             sendInput();
         });
-        
+
         function sendInput() {
             const packet = {
                 moveUp: keys['w'] || false,
@@ -37,10 +61,39 @@
                 moveRight: keys['d'] || false
             };
             socket.send(JSON.stringify(packet));
-            console.log("Sent:", packet);
         }
 
-        // Key tracking handles both press and release above
+        function getPlayerColor(id) {
+            if (id === localPlayerId) return '#00ff00'; // Green - local player
+            // For 2v2: IDs 0,1 vs 2,3 - first two are team A, next two are team B
+            const localTeam = Math.floor(localPlayerId / 2);
+            const playerTeam = Math.floor(id / 2);
+            if (localTeam === playerTeam) return '#0088ff'; // Blue - teammate
+            return '#ff4444'; // Red - enemy
+        }
+
+        function render() {
+            // Clear canvas
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw all players
+            for (const player of players) {
+                ctx.fillStyle = getPlayerColor(player.id);
+                ctx.fillRect(player.x, player.y, PLAYER_SIZE, PLAYER_SIZE);
+
+                // Draw player ID label
+                ctx.fillStyle = 'white';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(player.id, player.x + PLAYER_SIZE/2, player.y - 5);
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        // Start render loop
+        render();
     </script>
 </body>
 </html>

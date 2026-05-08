@@ -92,4 +92,10 @@ public class GameServer extends WebSocketServer {
     public Queue<InputPacket> getInputQueue() {
         return inputQueue;
     }
+
+    public void broadcast(String message) {
+        for (WebSocket conn : connectionToEntity.keySet()) {
+            conn.send(message);
+        }
+    }
 }

@@ -1,7 +1,5 @@
 package com.gunfight;
 
-import com.gunfight.engine.ComponentRegistry;
-import com.gunfight.engine.EntityManager;
 import com.gunfight.engine.GameWorld;
 import com.gunfight.data.HealthComponent;
 import com.gunfight.engine.GameLoop;
@@ -33,7 +31,7 @@ public class Main {
         GameServer server = new GameServer(8080, world);
         server.start();
 
-        GameLoop loop = new GameLoop(world, server.getInputQueue());
+        GameLoop loop = new GameLoop(world, server.getInputQueue(), server);
         loop.start();
 
         // try {

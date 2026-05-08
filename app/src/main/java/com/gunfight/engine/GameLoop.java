@@ -4,6 +4,8 @@ import java.util.Queue;
 
 import com.gunfight.logic.InputSystem;
 import com.gunfight.logic.MovementSystem;
+import com.gunfight.logic.NetworkBroadcastSystem;
+import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
 
 public class GameLoop implements Runnable {
@@ -13,12 +15,14 @@ public class GameLoop implements Runnable {
     private Queue<InputPacket> inputQueue;
     private InputSystem inputSystem = new InputSystem();
     private MovementSystem movementSystem = new MovementSystem();
+    private NetworkBroadcastSystem broadcastSystem;
 
     // GameWorld — to access entities and components when running systems
     // Queue<InputPacket> — to grab network inputs each tick and apply them
-    public GameLoop(GameWorld world, Queue<InputPacket> inputQueue) {
+    public GameLoop(GameWorld world, Queue<InputPacket> inputQueue, GameServer server) {
         this.world = world;
         this.inputQueue = inputQueue;
+        this.broadcastSystem = new NetworkBroadcastSystem(server);
     }
 
     public void start() {
@@ -46,7 +50,7 @@ public class GameLoop implements Runnable {
         }
     }
 
-    private void tick() {        
+    private void tick() {
         tickCount++;
 
         // process network inputs
@@ -54,6 +58,9 @@ public class GameLoop implements Runnable {
 
         // Apply movement
         movementSystem.update(world);
+
+        // Broadcast world state to all clients
+        broadcastSystem.update(world);
 
         // System.out.println("Tick: " + tickCount);
     }
