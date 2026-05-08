@@ -11,7 +11,7 @@
 <body>
     <div id="info">
         <h1>Gunfight Engine</h1>
-        <p>Use WASD to move your square. Green = you, Blue = teammate, Red = enemy.</p>
+        <p>Use WASD to move your circle. Green = you, Blue = teammate, Red = enemy.</p>
     </div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
@@ -24,6 +24,7 @@
         let players = [];
         const keys = {};
         const PLAYER_SIZE = 32;
+        const PLAYER_RADIUS = PLAYER_SIZE / 2;
 
         socket.onopen = () => {
             console.log("Connected to server!");
@@ -77,16 +78,19 @@
             ctx.fillStyle = '#333';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw all players
+            // Draw all players as circles
             for (const player of players) {
                 ctx.fillStyle = getPlayerColor(player.id);
-                ctx.fillRect(player.x, player.y, PLAYER_SIZE, PLAYER_SIZE);
+                ctx.beginPath();
+                // Center the circle on the position (position is top-left, so add radius)
+                ctx.arc(player.x + PLAYER_RADIUS, player.y + PLAYER_RADIUS, PLAYER_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
 
-                // Draw player ID label
+                // Draw player ID label above the circle
                 ctx.fillStyle = 'white';
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(player.id, player.x + PLAYER_SIZE/2, player.y - 5);
+                ctx.fillText(player.id, player.x + PLAYER_RADIUS, player.y - 5);
             }
 
             requestAnimationFrame(render);

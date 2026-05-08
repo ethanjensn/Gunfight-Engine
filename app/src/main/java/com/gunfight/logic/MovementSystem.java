@@ -7,6 +7,9 @@ import com.gunfight.data.InputComponent;
 
 public class MovementSystem {
     private static final float MOVE_SPEED = 5.0f;
+    private static final float CANVAS_WIDTH = 800f;
+    private static final float CANVAS_HEIGHT = 600f;
+    private static final float PLAYER_SIZE = 32f;
 
     public void update(GameWorld world) {
         // Get all entities with Position components
@@ -22,7 +25,11 @@ public class MovementSystem {
                 if (input.moveDown) pos.y += MOVE_SPEED;
                 if (input.moveLeft) pos.x -= MOVE_SPEED;
                 if (input.moveRight) pos.x += MOVE_SPEED;
-                
+
+                // Clamp to canvas bounds (keep 32x32 square fully visible)
+                pos.x = Math.max(0, Math.min(pos.x, CANVAS_WIDTH - PLAYER_SIZE));
+                pos.y = Math.max(0, Math.min(pos.y, CANVAS_HEIGHT - PLAYER_SIZE));
+
                 // Print position after movement
                 System.out.println("Entity " + entityId + " position: (" + pos.x + ", " + pos.y + ")");
             }
