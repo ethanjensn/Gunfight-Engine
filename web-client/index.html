@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gunfight WebSocket Test</title>
+</head>
+<body>
+    <h1>Gunfight Engine Tester</h1>
+    <p>Press WASD to send data. Open F12 (Console) to see the logs.</p>
+
+    <script>
+        // 1. Connect to your Java server (assuming it will run on port 8080)
+        const socket = new WebSocket("ws://localhost:8080");
+
+        socket.onopen = () => {
+            console.log("Connected to Java Engine!");
+        };
+
+        // 2. Handle WASD key presses
+        const keys = {};
+        
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            keys[e.key] = true;
+            sendInput();
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+            sendInput();
+        });
+        
+        function sendInput() {
+            const packet = {
+                moveUp: keys['w'] || false,
+                moveDown: keys['s'] || false,
+                moveLeft: keys['a'] || false,
+                moveRight: keys['d'] || false
+            };
+            socket.send(JSON.stringify(packet));
+            console.log("Sent:", packet);
+        }
+
+        // Key tracking handles both press and release above
+    </script>
+</body>
+</html>

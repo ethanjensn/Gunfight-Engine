@@ -4,6 +4,8 @@ import com.gunfight.engine.ComponentRegistry;
 import com.gunfight.engine.EntityManager;
 import com.gunfight.engine.GameWorld;
 import com.gunfight.data.HealthComponent;
+import com.gunfight.engine.GameLoop;
+import com.gunfight.net.GameServer;
 
 public class Main {
     
@@ -20,12 +22,26 @@ public class Main {
 
         System.out.println("Player 1's health and ID: " + world.getComponent(HealthComponent.class, player1).getHealth() + ", " + player1);
 
-        world.destroyEntity(player1);
+        // world.destroyEntity(player1);
         
-        if (world.getComponent(HealthComponent.class, player1) == null) {
-            System.out.println("Player 1 destroyed - component is null as expected");
-        } else {
-            System.out.println("Health: " + world.getComponent(HealthComponent.class, player1).getHealth());
-        }
+        // if (world.getComponent(HealthComponent.class, player1) == null) {
+        //     System.out.println("Player 1 destroyed - component is null as expected");
+        // } else {
+        //     System.out.println("Health: " + world.getComponent(HealthComponent.class, player1).getHealth());
+        // }
+
+        GameServer server = new GameServer(8080, world);
+        server.start();
+
+        GameLoop loop = new GameLoop(world, server.getInputQueue());
+        loop.start();
+
+        // try {
+        //     Thread.sleep(1000);
+        // } catch (InterruptedException e) {
+        //     Thread.currentThread().interrupt(); // Restore interrupt flag
+        // }
+
+        System.out.println("Ticks: " + loop.getTickCount());
     }
 }

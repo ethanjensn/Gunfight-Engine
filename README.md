@@ -12,10 +12,11 @@ Gunfight-Engine/
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/gunfight/
-│   │   │   │   ├── engine/          # Core: Engine, EntityManager, GameLoop
-│   │   │   │   ├── data/            # Components ("Attachments"): HealthComponent, PositionComponent, VelocityComponent
-│   │   │   │   ├── logic/           # Systems: MovementSystem, CombatSystem
-│   │   │   │   ├── net/             # Networking: GameServer
+│   │   │   │   ├── engine/          # Core engine: EntityManager, ComponentRegistry, GameLoop, GameWorld
+│   │   │   │   ├── data/            # Components ("Attachments"): state containers attached to entities
+│   │   │   │   ├── logic/           # Server-side game systems: read component state and apply game rules
+│   │   │   │   ├── client/          # Client-only: captures local input and sends packets to server
+│   │   │   │   ├── net/             # Networking: receives packets and writes to component state
 │   │   │   │   └── Main.java        # Entry point
 │   │   │   └── resources/           # Config files (JSON/YAML)
 │   │   └── test/

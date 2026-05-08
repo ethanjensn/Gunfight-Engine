@@ -1,5 +1,6 @@
 package com.gunfight.engine;
 
+import java.util.Set;
 
 public class GameWorld {
     private EntityManager entityManager = new EntityManager();
@@ -24,5 +25,10 @@ public class GameWorld {
     public void destroyEntity(int entityId) {
         entityManager.destroyEntity(entityId);
         componentRegistry.removeAllComponents(entityId);
+    }
+
+    // Gets all entities with a specific component
+    public <T> Set<Integer> getAllEntitiesWithComponent(Class<T> classType) {
+        return componentRegistry.getAllEntitiesWithComponent(classType);
     }
 }
