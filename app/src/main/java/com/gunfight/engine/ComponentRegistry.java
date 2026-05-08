@@ -19,8 +19,9 @@ public class ComponentRegistry {
     }
     
     public <T> T getComponent(Class<T> classType, int entityId) {
-        // Cast the component to the requested type
-        return classType.cast(components.get(classType).get(entityId));
+        // Get the component map or empty map if type doesn't exist, then get the entity's component
+        Map<Integer, Object> componentMap = components.getOrDefault(classType, java.util.Collections.emptyMap());
+        return classType.cast(componentMap.get(entityId));
     }
 
     public void removeAllComponents(int entityId) {
