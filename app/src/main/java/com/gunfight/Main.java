@@ -4,6 +4,7 @@ import com.gunfight.engine.GameWorld;
 import com.gunfight.data.HealthComponent;
 import com.gunfight.engine.GameLoop;
 import com.gunfight.net.GameServer;
+import com.gunfight.net.WebServer;
 
 public class Main {
     
@@ -27,6 +28,8 @@ public class Main {
         // } else {
         //     System.out.println("Health: " + world.getComponent(HealthComponent.class, player1).getHealth());
         // }
+
+        WebServer.start(3000, "../web-client");
 
         GameServer server = new GameServer(8080, world);
         server.start();
