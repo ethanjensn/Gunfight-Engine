@@ -9,6 +9,7 @@ import com.gunfight.data.PositionComponent;
 import com.gunfight.data.ProjectileComponent;
 import com.gunfight.data.WeaponComponent;
 import com.gunfight.data.HealthComponent;
+import com.gunfight.data.RespawnComponent;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.GameStatePacket;
 import com.gunfight.net.GameStatePacket.PlayerState;
@@ -95,8 +96,11 @@ public class NetworkBroadcastSystem {
             HealthComponent hp = world.getComponent(HealthComponent.class, entityId);
             if (hp != null) {
                 state.health = hp.health;
-                state.maxHealth = 100;
+                state.maxHealth = hp.maxHealth;
             }
+
+            RespawnComponent respawn = world.getComponent(RespawnComponent.class, entityId);
+            state.dead = (respawn != null);
 
             activeStates.add(state);
             playerIndex++;

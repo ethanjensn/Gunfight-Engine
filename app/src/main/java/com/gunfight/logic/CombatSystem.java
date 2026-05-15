@@ -4,6 +4,7 @@ import java.util.Set;
 import com.gunfight.engine.GameWorld;
 import com.gunfight.data.PositionComponent;
 import com.gunfight.data.HealthComponent;
+import com.gunfight.data.RespawnComponent;
 import com.gunfight.data.ProjectileComponent;
 
 public class CombatSystem {
@@ -32,6 +33,9 @@ public class CombatSystem {
             for (int playerId : playerEntities) {
                 // Don't hit the player who fired this bullet
                 if (playerId == proj.ownerId) continue;
+
+                // Don't hit dead players
+                if (world.getComponent(RespawnComponent.class, playerId) != null) continue;
 
                 PositionComponent playerPos = world.getComponent(PositionComponent.class, playerId);
                 if (playerPos == null) continue;

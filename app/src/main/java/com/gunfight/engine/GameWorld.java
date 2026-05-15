@@ -21,6 +21,11 @@ public class GameWorld {
         return componentRegistry.getComponent(classType, entityId);
     }
 
+    // Removes a single component from an entity
+    public <T> void removeComponent(Class<T> classType, int entityId) {
+        componentRegistry.removeComponent(classType, entityId);
+    }
+
     // Destroys an entity and cleans up all its components
     public void destroyEntity(int entityId) {
         entityManager.destroyEntity(entityId);

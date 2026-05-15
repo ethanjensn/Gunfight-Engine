@@ -116,6 +116,8 @@
 
             // Draw all players as circles
             for (const player of players) {
+                if (player.dead) continue;
+
                 const cx = player.x + PLAYER_RADIUS;
                 const cy = player.y + PLAYER_RADIUS;
 
