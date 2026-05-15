@@ -4,9 +4,11 @@ import java.util.List;
 
 public class GameStatePacket {
     public List<PlayerState> players;
+    public List<ProjectileState> projectiles;
 
-    public GameStatePacket(List<PlayerState> players) {
+    public GameStatePacket(List<PlayerState> players, List<ProjectileState> projectiles) {
         this.players = players;
+        this.projectiles = projectiles;
     }
 
     public static class PlayerState {
@@ -15,6 +17,18 @@ public class GameStatePacket {
         public float y;
 
         public PlayerState(int id, float x, float y) {
+            this.id = id;
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    public static class ProjectileState {
+        public int id;
+        public float x;
+        public float y;
+
+        public ProjectileState(int id, float x, float y) {
             this.id = id;
             this.x = x;
             this.y = y;

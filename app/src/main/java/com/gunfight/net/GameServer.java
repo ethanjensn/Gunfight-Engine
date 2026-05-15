@@ -13,6 +13,7 @@ import org.java_websocket.server.WebSocketServer;
 import com.gunfight.data.HealthComponent;
 import com.gunfight.data.InputComponent;
 import com.gunfight.data.PositionComponent;
+import com.gunfight.data.WeaponComponent;
 import com.gunfight.engine.GameWorld;
 import com.google.gson.Gson; // Make sure you import this at the top
 
@@ -41,6 +42,7 @@ public class GameServer extends WebSocketServer {
         world.addComponent(HealthComponent.class, newEntityId, new HealthComponent(100));
         world.addComponent(InputComponent.class, newEntityId, new InputComponent());
         world.addComponent(PositionComponent.class, newEntityId, new PositionComponent(0, 0));
+        world.addComponent(WeaponComponent.class, newEntityId, new WeaponComponent(10, (short)50, (short)50, 3));
 
         // map the connection to the entity ID
         connectionToEntity.put(conn, newEntityId);

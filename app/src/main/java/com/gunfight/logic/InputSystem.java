@@ -18,6 +18,9 @@ public class InputSystem {
                 input.moveDown = packet.moveDown;
                 input.moveLeft = packet.moveLeft;
                 input.moveRight = packet.moveRight;
+                input.isFiring = packet.isFiring;
+                input.cursorX = packet.cursorX;
+                input.cursorY = packet.cursorY;
             }
         }        
     }

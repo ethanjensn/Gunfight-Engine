@@ -5,6 +5,9 @@ import java.util.Queue;
 import com.gunfight.logic.InputSystem;
 import com.gunfight.logic.MovementSystem;
 import com.gunfight.logic.NetworkBroadcastSystem;
+import com.gunfight.logic.WeaponSystem;
+import com.gunfight.logic.ProjectileSystem;
+import com.gunfight.logic.ProjectilePool;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
 
@@ -15,6 +18,9 @@ public class GameLoop implements Runnable {
     private Queue<InputPacket> inputQueue;
     private InputSystem inputSystem = new InputSystem();
     private MovementSystem movementSystem = new MovementSystem();
+    private ProjectilePool projectilePool;
+    private WeaponSystem weaponSystem;
+    private ProjectileSystem projectileSystem = new ProjectileSystem();
     private NetworkBroadcastSystem broadcastSystem;
 
     // GameWorld — to access entities and components when running systems
@@ -22,6 +28,8 @@ public class GameLoop implements Runnable {
     public GameLoop(GameWorld world, Queue<InputPacket> inputQueue, GameServer server) {
         this.world = world;
         this.inputQueue = inputQueue;
+        this.projectilePool = new ProjectilePool(world);
+        this.weaponSystem = new WeaponSystem(projectilePool);
         this.broadcastSystem = new NetworkBroadcastSystem(server);
     }
 
@@ -58,6 +66,12 @@ public class GameLoop implements Runnable {
 
         // Apply movement
         movementSystem.update(world);
+
+        // Process weapon firing
+        weaponSystem.update(world, tickCount);
+
+        // Update projectiles (move, check lifetime/bounds)
+        projectileSystem.update(world);
 
         // Broadcast world state to all clients
         broadcastSystem.update(world);

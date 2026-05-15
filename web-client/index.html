@@ -22,9 +22,11 @@
 
         let localPlayerId = null;
         let players = [];
+        let projectiles = [];
         const keys = {};
         const PLAYER_SIZE = 32;
         const PLAYER_RADIUS = PLAYER_SIZE / 2;
+        const PROJECTILE_RADIUS = 4;
 
         socket.onopen = () => {
             console.log("Connected to server!");
@@ -36,9 +38,11 @@
                 players = data.players;
                 // Set local player ID from first received packet if not set
                 if (localPlayerId === null && players.length > 0) {
-                    // We'll determine local player by matching connection - for now, first player is local
                     localPlayerId = players[0].id;
                 }
+            }
+            if (data.projectiles) {
+                projectiles = data.projectiles;
             }
         };
 
@@ -54,12 +58,37 @@
             sendInput();
         });
 
+        // Mouse tracking for aiming
+        let mouseX = 0;
+        let mouseY = 0;
+        let isMouseDown = false;
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            sendInput();
+        });
+        
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            sendInput();
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            isMouseDown = false;
+            sendInput();
+        });
+
         function sendInput() {
             const packet = {
                 moveUp: keys['w'] || false,
                 moveDown: keys['s'] || false,
                 moveLeft: keys['a'] || false,
-                moveRight: keys['d'] || false
+                moveRight: keys['d'] || false,
+                isFiring: isMouseDown,
+                cursorX: mouseX,
+                cursorY: mouseY
             };
             socket.send(JSON.stringify(packet));
         }
@@ -91,6 +120,14 @@
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(player.id, player.x + PLAYER_RADIUS, player.y - 5);
+            }
+
+            // Draw all projectiles as small yellow circles
+            ctx.fillStyle = '#ffff00';
+            for (const projectile of projectiles) {
+                ctx.beginPath();
+                ctx.arc(projectile.x, projectile.y, PROJECTILE_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             requestAnimationFrame(render);

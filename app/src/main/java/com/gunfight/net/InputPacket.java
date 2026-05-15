@@ -5,6 +5,9 @@ public class InputPacket {
     public boolean moveDown;
     public boolean moveLeft;
     public boolean moveRight;
+    public boolean isFiring;
+    public float cursorX;
+    public float cursorY;
 
     // Internal ID used by the server, not sent by the browser
     private int entityId;
