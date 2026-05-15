@@ -42,7 +42,7 @@ public class GameServer extends WebSocketServer {
         world.addComponent(HealthComponent.class, newEntityId, new HealthComponent(100));
         world.addComponent(InputComponent.class, newEntityId, new InputComponent());
         world.addComponent(PositionComponent.class, newEntityId, new PositionComponent(0, 0));
-        world.addComponent(WeaponComponent.class, newEntityId, new WeaponComponent(10, (short)50, (short)50, 3));
+        world.addComponent(WeaponComponent.class, newEntityId, new WeaponComponent(10, (short)50, (short)50, 3, 90));
 
         // map the connection to the entity ID
         connectionToEntity.put(conn, newEntityId);

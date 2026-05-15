@@ -6,6 +6,7 @@ public class InputPacket {
     public boolean moveLeft;
     public boolean moveRight;
     public boolean isFiring;
+    public boolean isReloading;
     public float cursorX;
     public float cursorY;
 

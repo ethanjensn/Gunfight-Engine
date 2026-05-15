@@ -7,6 +7,7 @@ import java.util.Set;
 import com.gunfight.engine.GameWorld;
 import com.gunfight.data.PositionComponent;
 import com.gunfight.data.ProjectileComponent;
+import com.gunfight.data.WeaponComponent;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.GameStatePacket;
 import com.gunfight.net.GameStatePacket.PlayerState;
@@ -32,7 +33,7 @@ public class NetworkBroadcastSystem {
         this.server = server;
     }
 
-    public void update(GameWorld world) {
+    public void update(GameWorld world, int currentTick) {
         // activates exactly once per tick
         // Clear active lists (objects remain in pools for reuse)
         activeStates.clear();
@@ -76,6 +77,20 @@ public class NetworkBroadcastSystem {
             state.id = entityId;
             state.x = pos.x;
             state.y = pos.y;
+
+            WeaponComponent weapon = world.getComponent(WeaponComponent.class, entityId);
+            if (weapon != null) {
+                state.ammo = weapon.ammo;
+                state.maxAmmo = weapon.maxAmmo;
+                state.reloading = weapon.reloading;
+                if (weapon.reloading && weapon.reloadTicks > 0) {
+                    int elapsed = currentTick - weapon.reloadStartTick;
+                    state.reloadProgress = Math.min(1.0f, (float) elapsed / weapon.reloadTicks);
+                } else {
+                    state.reloadProgress = 0f;
+                }
+            }
+
             activeStates.add(state);
             playerIndex++;
         }

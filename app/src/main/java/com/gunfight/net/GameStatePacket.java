@@ -15,6 +15,10 @@ public class GameStatePacket {
         public int id;
         public float x;
         public float y;
+        public short ammo;
+        public short maxAmmo;
+        public boolean reloading;
+        public float reloadProgress;
 
         public PlayerState(int id, float x, float y) {
             this.id = id;

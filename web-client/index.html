@@ -27,6 +27,10 @@
         const PLAYER_SIZE = 32;
         const PLAYER_RADIUS = PLAYER_SIZE / 2;
         const PROJECTILE_RADIUS = 4;
+        const AMMO_BAR_WIDTH = 32;
+        const AMMO_BAR_HEIGHT = 4;
+        const AMMO_BAR_OFFSET_Y = 12;
+
 
         socket.onopen = () => {
             console.log("Connected to server!");
@@ -87,6 +91,7 @@
                 moveLeft: keys['a'] || false,
                 moveRight: keys['d'] || false,
                 isFiring: isMouseDown,
+                isReloading: keys['r'] || false,
                 cursorX: mouseX,
                 cursorY: mouseY
             };
@@ -109,17 +114,49 @@
 
             // Draw all players as circles
             for (const player of players) {
+                const cx = player.x + PLAYER_RADIUS;
+                const cy = player.y + PLAYER_RADIUS;
+
                 ctx.fillStyle = getPlayerColor(player.id);
                 ctx.beginPath();
-                // Center the circle on the position (position is top-left, so add radius)
-                ctx.arc(player.x + PLAYER_RADIUS, player.y + PLAYER_RADIUS, PLAYER_RADIUS, 0, Math.PI * 2);
+                ctx.arc(cx, cy, PLAYER_RADIUS, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Draw player ID label above the circle
                 ctx.fillStyle = 'white';
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(player.id, player.x + PLAYER_RADIUS, player.y - 5);
+                ctx.fillText(player.id, cx, player.y - AMMO_BAR_OFFSET_Y - AMMO_BAR_HEIGHT - 4);
+
+                // Ammo bar
+                if (player.maxAmmo > 0) {
+                    const ammoRatio = player.ammo / player.maxAmmo;
+
+                    // During reload, blend from current ammo level toward full using server progress
+                    let ratio;
+                    if (player.reloading) {
+                        ratio = ammoRatio + (1.0 - ammoRatio) * (player.reloadProgress || 0);
+                    } else {
+                        ratio = ammoRatio;
+                    }
+
+                    const barX = cx - AMMO_BAR_WIDTH / 2;
+                    const barY = player.y - AMMO_BAR_OFFSET_Y;
+
+                    // Background (dark)
+                    ctx.fillStyle = '#555';
+                    ctx.fillRect(barX, barY, AMMO_BAR_WIDTH, AMMO_BAR_HEIGHT);
+
+                    // Filled portion — color shifts from green → yellow → red
+                    if (ratio > 0.5) {
+                        ctx.fillStyle = '#44ff44';
+                    } else if (ratio > 0.25) {
+                        ctx.fillStyle = '#ffcc00';
+                    } else {
+                        ctx.fillStyle = '#ff4444';
+                    }
+                    ctx.fillRect(barX, barY, AMMO_BAR_WIDTH * ratio, AMMO_BAR_HEIGHT);
+                }
             }
 
             // Draw all projectiles as small yellow circles
