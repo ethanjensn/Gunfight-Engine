@@ -21,7 +21,7 @@ public class GameLoop implements Runnable {
     private MovementSystem movementSystem = new MovementSystem();
     private ProjectilePool projectilePool;
     private WeaponSystem weaponSystem;
-    private ProjectileSystem projectileSystem = new ProjectileSystem();
+    private ProjectileSystem projectileSystem;
     private ReloadSystem reloadSystem = new ReloadSystem();
     private NetworkBroadcastSystem broadcastSystem;
 
@@ -32,6 +32,7 @@ public class GameLoop implements Runnable {
         this.inputQueue = inputQueue;
         this.projectilePool = new ProjectilePool(world);
         this.weaponSystem = new WeaponSystem(projectilePool);
+        this.projectileSystem = new ProjectileSystem(projectilePool);
         this.broadcastSystem = new NetworkBroadcastSystem(server);
     }
 

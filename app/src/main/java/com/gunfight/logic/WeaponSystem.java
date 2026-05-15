@@ -60,7 +60,8 @@ public class WeaponSystem {
     }
     
     private boolean canFire(WeaponComponent weapon, int currentTick) {
-        return weapon.ammo > 0 && 
+        return !weapon.reloading &&
+               weapon.ammo > 0 && 
                currentTick - weapon.lastFireTick >= weapon.cooldownTicks;
     }
 }

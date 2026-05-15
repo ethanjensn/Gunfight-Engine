@@ -10,6 +10,12 @@ public class ProjectileSystem {
     private static final float CANVAS_WIDTH = 800f;
     private static final float CANVAS_HEIGHT = 600f;
 
+    private final ProjectilePool projectilePool;
+
+    public ProjectileSystem(ProjectilePool projectilePool) {
+        this.projectilePool = projectilePool;
+    }
+
     public void update(GameWorld world) {
         Set<Integer> entities = world.getAllEntitiesWithComponent(ProjectileComponent.class);
         
@@ -29,14 +35,15 @@ public class ProjectileSystem {
 
                 // Check bounds only if we actually have a position
                 if (pos.x < 0 || pos.x > CANVAS_WIDTH || pos.y < 0 || pos.y > CANVAS_HEIGHT) {
-                    projectile.active = false;
+                    projectilePool.release(entityId);
+                    continue;
                 }
             }
 
             // Always decrement life and check it
             projectile.lifeTicks--;
             if (projectile.lifeTicks <= 0) {
-                projectile.active = false;
+                projectilePool.release(entityId);
             }
         }
     }
