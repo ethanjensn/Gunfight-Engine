@@ -8,6 +8,7 @@ import com.gunfight.logic.NetworkBroadcastSystem;
 import com.gunfight.logic.WeaponSystem;
 import com.gunfight.logic.ProjectileSystem;
 import com.gunfight.logic.ReloadSystem;
+import com.gunfight.logic.CombatSystem;
 import com.gunfight.logic.ProjectilePool;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
@@ -22,6 +23,7 @@ public class GameLoop implements Runnable {
     private ProjectilePool projectilePool;
     private WeaponSystem weaponSystem;
     private ProjectileSystem projectileSystem;
+    private CombatSystem combatSystem;
     private ReloadSystem reloadSystem = new ReloadSystem();
     private NetworkBroadcastSystem broadcastSystem;
 
@@ -33,6 +35,7 @@ public class GameLoop implements Runnable {
         this.projectilePool = new ProjectilePool(world);
         this.weaponSystem = new WeaponSystem(projectilePool);
         this.projectileSystem = new ProjectileSystem(projectilePool);
+        this.combatSystem = new CombatSystem(projectilePool);
         this.broadcastSystem = new NetworkBroadcastSystem(server);
     }
 
@@ -78,6 +81,9 @@ public class GameLoop implements Runnable {
 
         // Update projectiles (move, check lifetime/bounds)
         projectileSystem.update(world);
+
+        // Check projectile-vs-player collisions
+        combatSystem.update(world);
 
         // Broadcast world state to all clients
         broadcastSystem.update(world, tickCount);

@@ -8,6 +8,7 @@ import com.gunfight.engine.GameWorld;
 import com.gunfight.data.PositionComponent;
 import com.gunfight.data.ProjectileComponent;
 import com.gunfight.data.WeaponComponent;
+import com.gunfight.data.HealthComponent;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.GameStatePacket;
 import com.gunfight.net.GameStatePacket.PlayerState;
@@ -89,6 +90,12 @@ public class NetworkBroadcastSystem {
                 } else {
                     state.reloadProgress = 0f;
                 }
+            }
+
+            HealthComponent hp = world.getComponent(HealthComponent.class, entityId);
+            if (hp != null) {
+                state.health = hp.health;
+                state.maxHealth = 100;
             }
 
             activeStates.add(state);
