@@ -5,7 +5,7 @@ import java.util.Set;
 import com.gunfight.data.InputComponent;
 import com.gunfight.data.PositionComponent;
 import com.gunfight.data.VisionComponent;
-import com.gunfight.data.WallComponent;
+import com.gunfight.data.StaticMapComponent;
 import com.gunfight.engine.GameWorld;
 
 public class VisionSystem {
@@ -17,23 +17,32 @@ public class VisionSystem {
     private int wallCount = 0;
 
     public void update(GameWorld world) {
-        // Hoist wall + candidate sets — fetched once per tick, not per observer
-        Set<Integer> wallEntities = world.getAllEntitiesWithComponent(WallComponent.class);
+        // Hoist sets — fetched once per tick, not per observer
         Set<Integer> candidates   = world.getAllEntitiesWithComponent(PositionComponent.class);
         Set<Integer> observers    = world.getAllEntitiesWithComponent(VisionComponent.class);
 
-        // Build flat AABB cache for walls — eliminates 2 HashMap lookups per ray step
+        // Build flat AABB cache from static map tiles
+        Set<Integer> mapEntities = world.getAllEntitiesWithComponent(StaticMapComponent.class);
         wallCount = 0;
-        int needed = wallEntities.size() * 4;
-        if (wallCache.length < needed) wallCache = new float[needed + 16];
-        for (int wallId : wallEntities) {
-            PositionComponent wp = world.getComponent(PositionComponent.class, wallId);
-            WallComponent wc     = world.getComponent(WallComponent.class,     wallId);
-            if (wp == null || wc == null) continue;
-            wallCache[wallCount++] = wp.x;
-            wallCache[wallCount++] = wp.y;
-            wallCache[wallCount++] = wp.x + wc.width;
-            wallCache[wallCount++] = wp.y + wc.height;
+        if (!mapEntities.isEmpty()) {
+            StaticMapComponent map = world.getComponent(StaticMapComponent.class, mapEntities.iterator().next());
+            if (map != null) {
+                int solidCount = map.getSolidTileCount();
+                int needed = solidCount * 4;
+                if (wallCache.length < needed) wallCache = new float[needed + 16];
+                
+                for (int tx = 0; tx < StaticMapComponent.COLS; tx++) {
+                    for (int ty = 0; ty < StaticMapComponent.ROWS; ty++) {
+                        if (!map.solid[tx][ty]) continue;
+                        float x = tx * StaticMapComponent.TILE_W;
+                        float y = ty * StaticMapComponent.TILE_H;
+                        wallCache[wallCount++] = x;
+                        wallCache[wallCount++] = y;
+                        wallCache[wallCount++] = x + StaticMapComponent.TILE_W;
+                        wallCache[wallCount++] = y + StaticMapComponent.TILE_H;
+                    }
+                }
+            }
         }
 
         for (int observerId : observers) {
@@ -57,8 +66,8 @@ public class VisionSystem {
                 PositionComponent cPos = world.getComponent(PositionComponent.class, candidateId);
                 if (cPos == null) continue;
 
-                // Skip wall entities (always sent, no LoS filter needed)
-                if (world.getComponent(WallComponent.class, candidateId) != null) continue;
+                // Walls are no longer entities — they're part of StaticMapComponent
+                // All candidates are players, no need to skip walls
 
                 float dx   = cPos.x - ox;
                 float dy   = cPos.y - oy;

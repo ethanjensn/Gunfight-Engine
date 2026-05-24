@@ -2,6 +2,7 @@ package com.gunfight.engine;
 
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.java_websocket.WebSocket;
@@ -14,15 +15,13 @@ import com.gunfight.data.PositionComponent;
 import com.gunfight.data.RoundStateComponent;
 import com.gunfight.data.ScoreComponent;
 import com.gunfight.data.SpawnPointComponent;
+import com.gunfight.data.StaticMapComponent;
 import com.gunfight.data.WeaponComponent;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
 
 public class Room {
     private static final int MAX_PLAYERS = 2;
-
-    private static final float[] SPAWN_X = { 384f, 384f };
-    private static final float[] SPAWN_Y = { 536f, 32f };
 
     private final GameWorld world;
     private final GameLoop loop;
@@ -43,6 +42,22 @@ public class Room {
 
         Room room = new Room(world, loop, connMap);
 
+        // Create the static map entity (persists forever)
+        int mapEntity = world.createEntity();
+        StaticMapComponent map = new StaticMapComponent(new String[]{
+            "##############",
+            "#......2.....#",
+            "#.##......##.#",
+            "#..##....##..#",
+            "##....##....##",
+            "##....##....##",
+            "#..##....##..#",
+            "#.##......##.#",
+            "#......1.....#",
+            "##############"
+        });
+        world.addComponent(StaticMapComponent.class, mapEntity, map);
+
         // Create the singleton match-state entity
         int matchEntity = world.createEntity();
         world.addComponent(RoundStateComponent.class, matchEntity, new RoundStateComponent());
@@ -55,8 +70,16 @@ public class Room {
         if (nextSlot >= MAX_PLAYERS) return;
 
         int slot = nextSlot++;
-        float spawnX = SPAWN_X[slot];
-        float spawnY = SPAWN_Y[slot];
+        // Get spawn points from static map
+        Set<Integer> mapEntities = world.getAllEntitiesWithComponent(StaticMapComponent.class);
+        StaticMapComponent map = null;
+        if (!mapEntities.isEmpty()) {
+            map = world.getComponent(StaticMapComponent.class, mapEntities.iterator().next());
+        }
+        float spawnX = (slot == 0 && map != null) ? map.p1SpawnX : 
+                       (slot == 1 && map != null) ? map.p2SpawnX : 384f;
+        float spawnY = (slot == 0 && map != null) ? map.p1SpawnY : 
+                       (slot == 1 && map != null) ? map.p2SpawnY : 300f;
 
         int entityId = world.createEntity();
 

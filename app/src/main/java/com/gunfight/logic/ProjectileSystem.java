@@ -5,7 +5,7 @@ import com.gunfight.engine.GameWorld;
 import com.gunfight.data.PositionComponent;
 import com.gunfight.data.VelocityComponent;
 import com.gunfight.data.ProjectileComponent;
-import com.gunfight.data.WallComponent;
+import com.gunfight.data.StaticMapComponent;
 
 public class ProjectileSystem {
     private static final float CANVAS_WIDTH = 800f;
@@ -56,16 +56,17 @@ public class ProjectileSystem {
     }
 
     private boolean hitsWall(GameWorld world, float bx, float by) {
-        Set<Integer> walls = world.getAllEntitiesWithComponent(WallComponent.class);
-        for (int wallId : walls) {
-            PositionComponent wp = world.getComponent(PositionComponent.class, wallId);
-            WallComponent wc = world.getComponent(WallComponent.class, wallId);
-            if (wp == null || wc == null) continue;
-            if (bx >= wp.x && bx <= wp.x + wc.width &&
-                by >= wp.y && by <= wp.y + wc.height) {
-                return true;
-            }
-        }
-        return false;
+        // Get static map component (singleton per room)
+        Set<Integer> mapEntities = world.getAllEntitiesWithComponent(StaticMapComponent.class);
+        if (mapEntities.isEmpty()) return false;
+        StaticMapComponent map = world.getComponent(StaticMapComponent.class, mapEntities.iterator().next());
+        if (map == null) return false;
+
+        // Convert position to tile coordinates
+        int tx = (int)(bx / StaticMapComponent.TILE_W);
+        int ty = (int)(by / StaticMapComponent.TILE_H);
+
+        // Check if within bounds and solid
+        return map.isWall(tx, ty);
     }
 }

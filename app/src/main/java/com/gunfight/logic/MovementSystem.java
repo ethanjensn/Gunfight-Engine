@@ -6,7 +6,7 @@ import com.gunfight.data.PositionComponent;
 import com.gunfight.data.InputComponent;
 import com.gunfight.data.RoundStateComponent;
 import com.gunfight.data.RoundStateComponent.RoundPhase;
-import com.gunfight.data.WallComponent;
+import com.gunfight.data.StaticMapComponent;
 
 public class MovementSystem {
     private static final float MOVE_SPEED = 5.0f;
@@ -49,32 +49,44 @@ public class MovementSystem {
     }
 
     private void resolveWallCollision(GameWorld world, PositionComponent pos) {
-        Set<Integer> walls = world.getAllEntitiesWithComponent(WallComponent.class);
-        for (int wallId : walls) {
-            PositionComponent wp = world.getComponent(PositionComponent.class, wallId);
-            WallComponent wc = world.getComponent(WallComponent.class, wallId);
-            if (wp == null || wc == null) continue;
+        // Get static map component (singleton per room)
+        Set<Integer> mapEntities = world.getAllEntitiesWithComponent(StaticMapComponent.class);
+        if (mapEntities.isEmpty()) return;
+        StaticMapComponent map = world.getComponent(StaticMapComponent.class, mapEntities.iterator().next());
+        if (map == null) return;
 
-            float px2 = pos.x + PLAYER_SIZE;
-            float py2 = pos.y + PLAYER_SIZE;
-            float wx2 = wp.x + wc.width;
-            float wy2 = wp.y + wc.height;
+        float px2 = pos.x + PLAYER_SIZE;
+        float py2 = pos.y + PLAYER_SIZE;
+        float[] bounds = new float[4]; // x, y, w, h
 
-            // AABB overlap check
-            if (pos.x < wx2 && px2 > wp.x && pos.y < wy2 && py2 > wp.y) {
-                // Find smallest overlap axis and push out
-                float overlapLeft  = px2 - wp.x;
-                float overlapRight = wx2 - pos.x;
-                float overlapTop   = py2 - wp.y;
-                float overlapBottom = wy2 - pos.y;
+        // Check collision against all solid tiles
+        for (int tx = 0; tx < StaticMapComponent.COLS; tx++) {
+            for (int ty = 0; ty < StaticMapComponent.ROWS; ty++) {
+                if (!map.solid[tx][ty]) continue;
 
-                float minX = Math.min(overlapLeft, overlapRight);
-                float minY = Math.min(overlapTop, overlapBottom);
+                map.getTileBounds(tx, ty, bounds);
+                float wx2 = bounds[0] + bounds[2];
+                float wy2 = bounds[1] + bounds[3];
 
-                if (minX < minY) {
-                    pos.x += (overlapLeft < overlapRight) ? -overlapLeft : overlapRight;
-                } else {
-                    pos.y += (overlapTop < overlapBottom) ? -overlapTop : overlapBottom;
+                // AABB overlap check
+                if (pos.x < wx2 && px2 > bounds[0] && pos.y < wy2 && py2 > bounds[1]) {
+                    // Find smallest overlap axis and push out
+                    float overlapLeft  = px2 - bounds[0];
+                    float overlapRight = wx2 - pos.x;
+                    float overlapTop   = py2 - bounds[1];
+                    float overlapBottom = wy2 - pos.y;
+
+                    float minX = Math.min(overlapLeft, overlapRight);
+                    float minY = Math.min(overlapTop, overlapBottom);
+
+                    if (minX < minY) {
+                        pos.x += (overlapLeft < overlapRight) ? -overlapLeft : overlapRight;
+                    } else {
+                        pos.y += (overlapTop < overlapBottom) ? -overlapTop : overlapBottom;
+                    }
+                    // Update player bounds after correction
+                    px2 = pos.x + PLAYER_SIZE;
+                    py2 = pos.y + PLAYER_SIZE;
                 }
             }
         }

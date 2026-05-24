@@ -21,7 +21,7 @@ import com.gunfight.net.GameStatePacket;
 import com.gunfight.net.GameStatePacket.PlayerState;
 import com.gunfight.net.GameStatePacket.ProjectileState;
 import com.gunfight.net.GameStatePacket.WallState;
-import com.gunfight.data.WallComponent;
+import com.gunfight.data.StaticMapComponent;
 import com.google.gson.Gson;
 
 public class NetworkBroadcastSystem {
@@ -85,8 +85,7 @@ public class NetworkBroadcastSystem {
                 continue;
             }
 
-            // 2. Skip walls — handled in their own loop below
-            if (world.getComponent(WallComponent.class, entityId) != null) continue;
+            // 2. Walls are no longer entities — handled via StaticMapComponent below
 
             // 3. If we reach here, it MUST be a player.
             if (playerIndex >= playerPool.size()) {
@@ -129,23 +128,28 @@ public class NetworkBroadcastSystem {
             playerIndex++;
         }
 
-        // Collect wall states
-        Set<Integer> wallEntities = world.getAllEntitiesWithComponent(WallComponent.class);
+        // Collect wall states from static map
+        Set<Integer> mapEntities = world.getAllEntitiesWithComponent(StaticMapComponent.class);
         int wallIndex = 0;
-        for (int wallId : wallEntities) {
-            PositionComponent wp = world.getComponent(PositionComponent.class, wallId);
-            WallComponent wc = world.getComponent(WallComponent.class, wallId);
-            if (wp == null || wc == null) continue;
-            if (wallIndex >= wallPool.size()) {
-                wallPool.add(new WallState(0, 0, 0, 0));
+        if (!mapEntities.isEmpty()) {
+            StaticMapComponent map = world.getComponent(StaticMapComponent.class, mapEntities.iterator().next());
+            if (map != null) {
+                for (int tx = 0; tx < StaticMapComponent.COLS; tx++) {
+                    for (int ty = 0; ty < StaticMapComponent.ROWS; ty++) {
+                        if (!map.solid[tx][ty]) continue;
+                        if (wallIndex >= wallPool.size()) {
+                            wallPool.add(new WallState(0, 0, 0, 0));
+                        }
+                        WallState ws = wallPool.get(wallIndex);
+                        ws.x = tx * StaticMapComponent.TILE_W;
+                        ws.y = ty * StaticMapComponent.TILE_H;
+                        ws.w = StaticMapComponent.TILE_W;
+                        ws.h = StaticMapComponent.TILE_H;
+                        activeWalls.add(ws);
+                        wallIndex++;
+                    }
+                }
             }
-            WallState ws = wallPool.get(wallIndex);
-            ws.x = wp.x;
-            ws.y = wp.y;
-            ws.w = wc.width;
-            ws.h = wc.height;
-            activeWalls.add(ws);
-            wallIndex++;
         }
 
         // Populate round state from the singleton match entity
