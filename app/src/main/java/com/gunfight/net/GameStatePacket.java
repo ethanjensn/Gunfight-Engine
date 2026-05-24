@@ -5,12 +5,14 @@ import java.util.List;
 public class GameStatePacket {
     public List<PlayerState> players;
     public List<ProjectileState> projectiles;
+    public List<WallState> walls;
     public String phase;
     public int roundNumber;
 
-    public GameStatePacket(List<PlayerState> players, List<ProjectileState> projectiles) {
+    public GameStatePacket(List<PlayerState> players, List<ProjectileState> projectiles, List<WallState> walls) {
         this.players = players;
         this.projectiles = projectiles;
+        this.walls = walls;
     }
 
     public static class PlayerState {
@@ -43,6 +45,20 @@ public class GameStatePacket {
             this.id = id;
             this.x = x;
             this.y = y;
+        }
+    }
+
+    public static class WallState {
+        public float x;
+        public float y;
+        public float w;
+        public float h;
+
+        public WallState(float x, float y, float w, float h) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
         }
     }
 }

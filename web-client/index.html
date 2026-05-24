@@ -23,6 +23,7 @@
         let localPlayerId = null;
         let players = [];
         let projectiles = [];
+        let walls = [];
         let phase = 'WAITING';
         let roundNumber = 0;
         const keys = {};
@@ -52,6 +53,7 @@
             if (data.projectiles) {
                 projectiles = data.projectiles;
             }
+            if (data.walls) walls = data.walls;
             if (data.phase) phase = data.phase;
             if (data.roundNumber !== undefined) roundNumber = data.roundNumber;
         };
@@ -190,6 +192,15 @@
                 ctx.font = '12px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(player.id, cx, healthBarY - 4);
+            }
+
+            // Draw walls
+            ctx.fillStyle = '#888888';
+            ctx.strokeStyle = '#555555';
+            ctx.lineWidth = 2;
+            for (const wall of walls) {
+                ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+                ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
             }
 
             // Draw all projectiles as small yellow circles

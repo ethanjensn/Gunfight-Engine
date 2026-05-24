@@ -5,6 +5,7 @@ import com.gunfight.engine.GameWorld;
 import com.gunfight.data.PositionComponent;
 import com.gunfight.data.VelocityComponent;
 import com.gunfight.data.ProjectileComponent;
+import com.gunfight.data.WallComponent;
 
 public class ProjectileSystem {
     private static final float CANVAS_WIDTH = 800f;
@@ -33,8 +34,14 @@ public class ProjectileSystem {
                 pos.x += vel.vx;
                 pos.y += vel.vy;
 
-                // Check bounds only if we actually have a position
+                // Check bounds
                 if (pos.x < 0 || pos.x > CANVAS_WIDTH || pos.y < 0 || pos.y > CANVAS_HEIGHT) {
+                    projectilePool.release(entityId);
+                    continue;
+                }
+
+                // Check wall collisions
+                if (hitsWall(world, pos.x, pos.y)) {
                     projectilePool.release(entityId);
                     continue;
                 }
@@ -46,5 +53,19 @@ public class ProjectileSystem {
                 projectilePool.release(entityId);
             }
         }
+    }
+
+    private boolean hitsWall(GameWorld world, float bx, float by) {
+        Set<Integer> walls = world.getAllEntitiesWithComponent(WallComponent.class);
+        for (int wallId : walls) {
+            PositionComponent wp = world.getComponent(PositionComponent.class, wallId);
+            WallComponent wc = world.getComponent(WallComponent.class, wallId);
+            if (wp == null || wc == null) continue;
+            if (bx >= wp.x && bx <= wp.x + wc.width &&
+                by >= wp.y && by <= wp.y + wc.height) {
+                return true;
+            }
+        }
+        return false;
     }
 }

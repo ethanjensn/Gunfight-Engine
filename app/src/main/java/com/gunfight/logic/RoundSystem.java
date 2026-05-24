@@ -3,6 +3,7 @@ package com.gunfight.logic;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.Random;
 
 import com.gunfight.data.HealthComponent;
 import com.gunfight.data.InputComponent;
@@ -12,14 +13,23 @@ import com.gunfight.data.RoundStateComponent;
 import com.gunfight.data.RoundStateComponent.RoundPhase;
 import com.gunfight.data.ScoreComponent;
 import com.gunfight.data.SpawnPointComponent;
+import com.gunfight.data.WallComponent;
 import com.gunfight.data.WeaponComponent;
 import com.gunfight.engine.GameWorld;
 
 public class RoundSystem {
     private static final int WINS_TO_WIN_MATCH = 3;
     private static final int ROUND_OVER_PAUSE_TICKS = 180; // 3 seconds at 60 tps
+    private static final int WALL_COUNT = 4;
+    private static final float WALL_W = 80f;
+    private static final float WALL_H = 24f;
+    private static final float CANVAS_W = 800f;
+    private static final float CANVAS_H = 600f;
+    private static final float SPAWN_MARGIN = 80f; // keep walls away from spawn zones
 
     private final List<Integer> playerEntities = new ArrayList<>();
+    private final List<Integer> wallsToDestroy = new ArrayList<>();
+    private final Random random = new Random();
 
     public void update(GameWorld world) {
         // Find the singleton match-state entity
@@ -125,7 +135,26 @@ public class RoundSystem {
         state.phase = RoundPhase.WAITING;
     }
 
+    private void spawnWalls(GameWorld world) {
+        // Destroy all existing wall entities by querying the world — pure ECS
+        wallsToDestroy.clear();
+        wallsToDestroy.addAll(world.getAllEntitiesWithComponent(WallComponent.class));
+        for (int wallId : wallsToDestroy) {
+            world.destroyEntity(wallId);
+        }
+
+        // Spawn new random walls, avoiding spawn zones at top/bottom
+        for (int i = 0; i < WALL_COUNT; i++) {
+            float x = SPAWN_MARGIN + random.nextFloat() * (CANVAS_W - WALL_W - SPAWN_MARGIN * 2);
+            float y = SPAWN_MARGIN + random.nextFloat() * (CANVAS_H - WALL_H - SPAWN_MARGIN * 2);
+            int wallId = world.createEntity();
+            world.addComponent(PositionComponent.class, wallId, new PositionComponent(x, y));
+            world.addComponent(WallComponent.class, wallId, new WallComponent(WALL_W, WALL_H));
+        }
+    }
+
     private void startRound(GameWorld world, RoundStateComponent state) {
+        spawnWalls(world);
         Set<Integer> players = world.getAllEntitiesWithComponent(ScoreComponent.class);
 
         for (int entityId : players) {

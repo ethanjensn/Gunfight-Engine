@@ -16,6 +16,8 @@ import com.gunfight.net.GameServer;
 import com.gunfight.net.GameStatePacket;
 import com.gunfight.net.GameStatePacket.PlayerState;
 import com.gunfight.net.GameStatePacket.ProjectileState;
+import com.gunfight.net.GameStatePacket.WallState;
+import com.gunfight.data.WallComponent;
 import com.google.gson.Gson;
 
 public class NetworkBroadcastSystem {
@@ -25,13 +27,15 @@ public class NetworkBroadcastSystem {
     // Object pool: pre-allocated PlayerState objects that get reused
     private final List<PlayerState> playerPool = new ArrayList<>();
     private final List<ProjectileState> projectilePool = new ArrayList<>();
-    
+    private final List<WallState> wallPool = new ArrayList<>();
+
     // Active states for this tick
     private final List<PlayerState> activeStates = new ArrayList<>();
     private final List<ProjectileState> activeProjectiles = new ArrayList<>();
-    
+    private final List<WallState> activeWalls = new ArrayList<>();
+
     // Permanent packet - Gson reads from active states each tick
-    private final GameStatePacket packet = new GameStatePacket(activeStates, activeProjectiles);
+    private final GameStatePacket packet = new GameStatePacket(activeStates, activeProjectiles, activeWalls);
 
     public NetworkBroadcastSystem(GameServer server) {
         this.server = server;
@@ -42,6 +46,7 @@ public class NetworkBroadcastSystem {
         // Clear active lists (objects remain in pools for reuse)
         activeStates.clear();
         activeProjectiles.clear();
+        activeWalls.clear();
 
         // Collect player states (entities with Position but no ProjectileComponent)
         Set<Integer> entities = world.getAllEntitiesWithComponent(PositionComponent.class);
@@ -73,7 +78,10 @@ public class NetworkBroadcastSystem {
                 continue;
             }
 
-            // 2. If we reach here, proj == null. It MUST be a player.
+            // 2. Skip walls — handled in their own loop below
+            if (world.getComponent(WallComponent.class, entityId) != null) continue;
+
+            // 3. If we reach here, it MUST be a player.
             if (playerIndex >= playerPool.size()) {
                 playerPool.add(new PlayerState(0, 0, 0));
             }
@@ -112,6 +120,25 @@ public class NetworkBroadcastSystem {
 
             activeStates.add(state);
             playerIndex++;
+        }
+
+        // Collect wall states
+        Set<Integer> wallEntities = world.getAllEntitiesWithComponent(WallComponent.class);
+        int wallIndex = 0;
+        for (int wallId : wallEntities) {
+            PositionComponent wp = world.getComponent(PositionComponent.class, wallId);
+            WallComponent wc = world.getComponent(WallComponent.class, wallId);
+            if (wp == null || wc == null) continue;
+            if (wallIndex >= wallPool.size()) {
+                wallPool.add(new WallState(0, 0, 0, 0));
+            }
+            WallState ws = wallPool.get(wallIndex);
+            ws.x = wp.x;
+            ws.y = wp.y;
+            ws.w = wc.width;
+            ws.h = wc.height;
+            activeWalls.add(ws);
+            wallIndex++;
         }
 
         // Populate round state from the singleton match entity
