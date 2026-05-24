@@ -1,25 +1,305 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Gunfight 2v2 Shooter</title>
+    <title>Gunfight Matchmaking</title>
     <style>
-        body { margin: 0; display: flex; flex-direction: column; align-items: center; background: #222; color: white; font-family: sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            min-height: 100vh;
+            background: #1a1a2e; 
+            color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Main Menu Styles */
+        #mainMenu {
+            text-align: center;
+            padding: 40px;
+            background: #16213e;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 500px;
+            width: 90%;
+        }
+        #mainMenu h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #00d4aa 0%, #00a8e8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #mainMenu h2 {
+            font-size: 1.2em;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .username-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            background: #0f3460;
+            color: white;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .username-input:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+        .remember-me {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 30px;
+            color: #888;
+            font-size: 0.9em;
+        }
+        .remember-me input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #00d4aa;
+        }
+        .game-mode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .mode-btn {
+            padding: 18px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: linear-gradient(135deg, #e94560 0%, #c23a51 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .mode-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
+        }
+        .mode-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .mode-btn .players {
+            font-size: 0.7em;
+            opacity: 0.8;
+            font-weight: normal;
+        }
+        
+        /* Queue Screen Styles */
+        #queueScreen {
+            text-align: center;
+            padding: 40px;
+            background: #16213e;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 400px;
+            width: 90%;
+            display: none;
+        }
+        #queueScreen h2 {
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #00d4aa;
+        }
+        .queue-info {
+            background: #0f3460;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        .queue-stat {
+            margin: 15px 0;
+        }
+        .queue-stat .label {
+            font-size: 0.9em;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .queue-stat .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00a8e8;
+        }
+        .cancel-btn {
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border: 2px solid #e94560;
+            border-radius: 8px;
+            background: transparent;
+            color: #e94560;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cancel-btn:hover {
+            background: #e94560;
+            color: white;
+        }
+        .waiting-animation {
+            margin: 20px 0;
+        }
+        .dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00d4aa;
+            margin: 0 4px;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* Game Screen Styles */
+        #gameScreen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+        #gameScreen #info {
+            margin: 10px;
+            text-align: center;
+        }
         canvas { border: 2px solid #444; background: #333; }
-        #info { margin: 10px; }
+        
+        /* Match Found Overlay */
+        #matchFound {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        #matchFound h2 {
+            font-size: 3em;
+            color: #00d4aa;
+            margin-bottom: 20px;
+        }
+        .countdown {
+            font-size: 5em;
+            font-weight: bold;
+            color: #e94560;
+        }
     </style>
 </head>
 <body>
-    <div id="info">
-        <h1>Gunfight Engine</h1>
-        <p>Use WASD to move your circle. Green = you, Blue = teammate, Red = enemy.</p>
+    <!-- Main Menu -->
+    <div id="mainMenu">
+        <h1>GUNFIGHT</h1>
+        <h2>Tactical Team Shooter</h2>
+        
+        <input type="text" id="usernameInput" class="username-input" placeholder="Enter your username" maxlength="16">
+        
+        <label class="remember-me">
+            <input type="checkbox" id="rememberMe" checked>
+            Remember me
+        </label>
+        
+        <div class="game-mode-buttons">
+            <button class="mode-btn" id="btn1v1" onclick="joinQueue('1v1')">
+                1v1 Duel
+                <div class="players">1 vs 1</div>
+            </button>
+            <button class="mode-btn" id="btn2v2" onclick="joinQueue('2v2')">
+                2v2 Team Battle
+                <div class="players">2 vs 2</div>
+            </button>
+            <button class="mode-btn" id="btn3v3" onclick="joinQueue('3v3')">
+                3v3 Warfare
+                <div class="players">3 vs 3</div>
+            </button>
+        </div>
     </div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <!-- Queue Screen -->
+    <div id="queueScreen">
+        <h2>Finding Match...</h2>
+        
+        <div class="waiting-animation">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+        
+        <div class="queue-info">
+            <div class="queue-stat">
+                <div class="label">Game Mode</div>
+                <div class="value" id="queueMode">1v1</div>
+            </div>
+            <div class="queue-stat">
+                <div class="label">Queue Position</div>
+                <div class="value" id="queuePosition">-</div>
+            </div>
+            <div class="queue-stat">
+                <div class="label">Estimated Wait</div>
+                <div class="value" id="queueWait">-</div>
+            </div>
+            <div class="queue-stat">
+                <div class="label">Players in Queue</div>
+                <div class="value" id="queueSize">-</div>
+            </div>
+        </div>
+        
+        <button class="cancel-btn" onclick="cancelQueue()">Cancel</button>
+    </div>
+    
+    <!-- Match Found Overlay -->
+    <div id="matchFound">
+        <h2>Match Found!</h2>
+        <div class="countdown" id="matchCountdown">5</div>
+    </div>
+    
+    <!-- Game Screen -->
+    <div id="gameScreen">
+        <div id="info">
+            <h1>Gunfight Engine</h1>
+            <p>Use WASD to move your circle. Green = you, Blue = teammate, Red = enemy.</p>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
 
     <script>
+        // DOM Elements
+        const mainMenu = document.getElementById('mainMenu');
+        const queueScreen = document.getElementById('queueScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const matchFound = document.getElementById('matchFound');
+        const usernameInput = document.getElementById('usernameInput');
+        const rememberMeCheckbox = document.getElementById('rememberMe');
+        
+        // Queue display elements
+        const queueModeDisplay = document.getElementById('queueMode');
+        const queuePositionDisplay = document.getElementById('queuePosition');
+        const queueWaitDisplay = document.getElementById('queueWait');
+        const queueSizeDisplay = document.getElementById('queueSize');
+        
+        // Game state
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const socket = new WebSocket("ws://localhost:8080");
-
+        
+        let currentState = 'MENU'; // MENU, QUEUE, GAME
         let localPlayerId = null;
         let players = [];
         let projectiles = [];
@@ -36,16 +316,120 @@
         const BAR_GAP = 2;
         const BAR_OFFSET_Y = 12;
 
+        // Load saved username
+        function loadSavedUsername() {
+            const savedUsername = localStorage.getItem('gunfight_username');
+            const savedRemember = localStorage.getItem('gunfight_remember');
+            
+            if (savedUsername && savedRemember === 'true') {
+                usernameInput.value = savedUsername;
+                rememberMeCheckbox.checked = true;
+            }
+        }
+        
+        // Save username
+        function saveUsername() {
+            const username = usernameInput.value.trim();
+            const remember = rememberMeCheckbox.checked;
+            
+            if (remember && username) {
+                localStorage.setItem('gunfight_username', username);
+                localStorage.setItem('gunfight_remember', 'true');
+            } else {
+                localStorage.removeItem('gunfight_username');
+                localStorage.setItem('gunfight_remember', 'false');
+            }
+            
+            return username;
+        }
+        
+        // State switching
+        function showState(state) {
+            currentState = state;
+            mainMenu.style.display = state === 'MENU' ? 'block' : 'none';
+            queueScreen.style.display = state === 'QUEUE' ? 'block' : 'none';
+            gameScreen.style.display = state === 'GAME' ? 'flex' : 'none';
+            
+            if (state === 'GAME') {
+                // Start rendering game
+                requestAnimationFrame(render);
+            }
+        }
+        
+        // Join queue
+        function joinQueue(gameMode) {
+            const username = saveUsername();
+            
+            if (!username) {
+                usernameInput.focus();
+                usernameInput.style.borderColor = '#e94560';
+                setTimeout(() => usernameInput.style.borderColor = '', 1000);
+                return;
+            }
+            
+            // Send set username first
+            socket.send(JSON.stringify({ type: 'setUsername', username: username }));
+            
+            // Then join queue
+            socket.send(JSON.stringify({ type: 'joinQueue', gameMode: gameMode }));
+            
+            // Update queue display
+            queueModeDisplay.textContent = gameMode;
+            showState('QUEUE');
+        }
+        
+        // Cancel queue
+        function cancelQueue() {
+            socket.send(JSON.stringify({ type: 'cancelQueue' }));
+            showState('MENU');
+        }
+        
+        // Show match found
+        function showMatchFound() {
+            matchFound.style.display = 'flex';
+            let count = 5;
+            document.getElementById('matchCountdown').textContent = count;
+            
+            const countdown = setInterval(() => {
+                count--;
+                document.getElementById('matchCountdown').textContent = count;
+                if (count <= 0) {
+                    clearInterval(countdown);
+                    matchFound.style.display = 'none';
+                }
+            }, 1000);
+        }
 
         socket.onopen = () => {
             console.log("Connected to server!");
+            loadSavedUsername();
         };
 
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            if (data.players) {
+            
+            // Handle lobby/queue messages
+            if (data.type === 'queueStatus') {
+                queuePositionDisplay.textContent = data.position;
+                queueWaitDisplay.textContent = data.estimatedSeconds + 's';
+                queueSizeDisplay.textContent = data.queueSize;
+            }
+            else if (data.type === 'gameStart') {
+                showMatchFound();
+                setTimeout(() => {
+                    showState('GAME');
+                }, 5000);
+            }
+            else if (data.type === 'state' && data.state === 'MENU') {
+                showState('MENU');
+            }
+            else if (data.type === 'error') {
+                console.error('Server error:', data.message);
+                alert('Error: ' + data.message);
+            }
+            // Handle game messages (existing ECS protocol)
+            else if (data.players) {
                 players = data.players;
-                // Set local player ID from first received packet if not set
                 if (localPlayerId === null && players.length > 0) {
                     localPlayerId = players[0].id;
                 }
@@ -58,24 +442,13 @@
             if (data.roundNumber !== undefined) roundNumber = data.roundNumber;
         };
 
-        // WASD input handling
-        window.addEventListener('keydown', (e) => {
-            if (e.repeat) return;
-            keys[e.key] = true;
-            sendInput();
-        });
-
-        window.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-            sendInput();
-        });
-
-        // Mouse tracking for aiming
+        // Mouse tracking for aiming (only active in game)
         let mouseX = 0;
         let mouseY = 0;
         let isMouseDown = false;
         
         canvas.addEventListener('mousemove', (e) => {
+            if (currentState !== 'GAME') return;
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
@@ -83,19 +456,40 @@
         });
         
         canvas.addEventListener('mousedown', (e) => {
+            if (currentState !== 'GAME') return;
             isMouseDown = true;
             sendInput();
         });
         
         canvas.addEventListener('mouseup', (e) => {
+            if (currentState !== 'GAME') return;
             isMouseDown = false;
             sendInput();
+        });
+        
+        // WASD input handling
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            keys[e.key] = true;
+            if (currentState === 'GAME') {
+                sendInput();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+            if (currentState === 'GAME') {
+                sendInput();
+            }
         });
 
         let readySent = false;
 
         function sendInput(overrides = {}) {
+            if (currentState !== 'GAME') return;
+            
             const packet = {
+                type: 'gameInput',
                 moveUp: keys['w'] || false,
                 moveDown: keys['s'] || false,
                 moveLeft: keys['a'] || false,
@@ -121,7 +515,7 @@
 
         function getPlayerColor(id) {
             if (id === localPlayerId) return '#00ff00'; // Green - local player
-            // For 2v2: IDs 0,1 vs 2,3 - first two are team A, next two are team B
+            // For team games: even slots vs odd slots
             const localTeam = Math.floor(localPlayerId / 2);
             const playerTeam = Math.floor(id / 2);
             if (localTeam === playerTeam) return '#0088ff'; // Blue - teammate
@@ -333,8 +727,8 @@
             }
         });
 
-        // Start render loop
-        render();
+        // Start in menu
+        showState('MENU');
     </script>
 </body>
 </html>

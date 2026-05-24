@@ -1,5 +1,6 @@
 package com.gunfight.engine;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -7,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.java_websocket.WebSocket;
 
+import com.google.gson.JsonObject;
 import com.gunfight.data.HealthComponent;
 import com.gunfight.data.VisionComponent;
 import com.gunfight.data.InputComponent;
@@ -21,26 +23,40 @@ import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
 
 public class Room {
-    private static final int MAX_PLAYERS = 2;
+    private static final Map<String, Integer> PLAYERS_PER_MODE = Map.of(
+        "1v1", 2,
+        "2v2", 4,
+        "3v3", 6
+    );
+    
+    private final int maxPlayers;
 
     private final GameWorld world;
     private final GameLoop loop;
     private final Map<WebSocket, Integer> connectionToEntity;
     private int nextSlot = 0;
 
-    private Room(GameWorld world, GameLoop loop, Map<WebSocket, Integer> connectionToEntity) {
+    private Room(GameWorld world, GameLoop loop, Map<WebSocket, Integer> connectionToEntity, int maxPlayers) {
         this.world = world;
         this.loop = loop;
         this.connectionToEntity = connectionToEntity;
+        this.maxPlayers = maxPlayers;
     }
 
+    // Legacy create for backwards compatibility (creates 1v1 room)
     public static Room create(GameServer server) {
+        return create(server, "1v1", List.of());
+    }
+
+    public static Room create(GameServer server, String gameMode, List<WebSocket> initialPlayers) {
+        int maxPlayers = PLAYERS_PER_MODE.getOrDefault(gameMode, 2);
+        
         GameWorld world = new GameWorld();
         Queue<InputPacket> inputQueue = server.getInputQueue();
         Map<WebSocket, Integer> connMap = new ConcurrentHashMap<>();
         GameLoop loop = new GameLoop(world, inputQueue, server, connMap);
 
-        Room room = new Room(world, loop, connMap);
+        Room room = new Room(world, loop, connMap, maxPlayers);
 
         // Create the static map entity (persists forever)
         int mapEntity = world.createEntity();
@@ -62,12 +78,17 @@ public class Room {
         int matchEntity = world.createEntity();
         world.addComponent(RoundStateComponent.class, matchEntity, new RoundStateComponent());
 
+        // Add initial players
+        for (WebSocket conn : initialPlayers) {
+            room.addPlayer(conn);
+        }
+
         loop.start();
         return room;
     }
 
     public void addPlayer(WebSocket conn) {
-        if (nextSlot >= MAX_PLAYERS) return;
+        if (nextSlot >= maxPlayers) return;
 
         int slot = nextSlot++;
         // Get spawn points from static map
@@ -76,10 +97,27 @@ public class Room {
         if (!mapEntities.isEmpty()) {
             map = world.getComponent(StaticMapComponent.class, mapEntities.iterator().next());
         }
-        float spawnX = (slot == 0 && map != null) ? map.p1SpawnX : 
-                       (slot == 1 && map != null) ? map.p2SpawnX : 384f;
-        float spawnY = (slot == 0 && map != null) ? map.p1SpawnY : 
-                       (slot == 1 && map != null) ? map.p2SpawnY : 300f;
+        
+        // Calculate spawn position - spread players across the two team spawns
+        float spawnX, spawnY;
+        if (map != null) {
+            // Team 1: slots 0,2,4 spawn near p1
+            // Team 2: slots 1,3,5 spawn near p2
+            boolean isTeam1 = (slot % 2) == 0;
+            float baseX = isTeam1 ? map.p1SpawnX : map.p2SpawnX;
+            float baseY = isTeam1 ? map.p1SpawnY : map.p2SpawnY;
+            
+            // Add small offset based on slot index within team (0, 1, 2)
+            int teamSlot = slot / 2;
+            float offsetX = (teamSlot - 1) * 40f; // -40, 0, +40
+            float offsetY = (teamSlot - 1) * 30f; // -30, 0, +30
+            
+            spawnX = baseX + offsetX;
+            spawnY = baseY + offsetY;
+        } else {
+            spawnX = 384f;
+            spawnY = 300f;
+        }
 
         int entityId = world.createEntity();
 
@@ -96,6 +134,12 @@ public class Room {
 
         System.out.println("Player joined room — slot " + slot + ", entityId " + entityId);
     }
+    
+    // Handle input from lobby - converts JSON to InputPacket and adds to queue
+    public void handleInput(int entityId, JsonObject packet) {
+        // This will be called from LobbyManager to forward player inputs
+        // The actual processing happens via InputSystem in the game loop
+    }
 
     public void removePlayer(WebSocket conn) {
         Integer entityId = connectionToEntity.remove(conn);
@@ -107,7 +151,7 @@ public class Room {
     }
 
     public boolean isFull() {
-        return nextSlot >= MAX_PLAYERS;
+        return nextSlot >= maxPlayers;
     }
 
     public boolean isEmpty() {

@@ -1,0 +1,92 @@
+package com.gunfight.lobby;
+
+import com.gunfight.engine.Room;
+import com.gunfight.net.GameServer;
+import org.java_websocket.WebSocket;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class RoomManager {
+    private final Map<String, Room> rooms = new ConcurrentHashMap<>();
+    private final Map<WebSocket, String> playerToRoom = new ConcurrentHashMap<>();
+    private final GameServer gameServer;
+    private int nextRoomId = 1;
+
+    // Players per game mode
+    private static final Map<String, Integer> PLAYERS_PER_MODE = Map.of(
+        "1v1", 2,
+        "2v2", 4,
+        "3v3", 6
+    );
+
+    public RoomManager(GameServer gameServer) {
+        this.gameServer = gameServer;
+    }
+
+    public Room createRoom(String gameMode, List<QueueEntry> players) {
+        int requiredPlayers = PLAYERS_PER_MODE.getOrDefault(gameMode, 2);
+        if (players.size() != requiredPlayers) {
+            throw new IllegalArgumentException("Wrong player count for " + gameMode + 
+                ": expected " + requiredPlayers + ", got " + players.size());
+        }
+
+        // Extract WebSocket connections
+        List<WebSocket> connections = new ArrayList<>();
+        for (QueueEntry entry : players) {
+            connections.add(entry.connection);
+        }
+
+        String roomId = "room-" + (nextRoomId++);
+        Room room = Room.create(gameServer, gameMode, connections);
+        rooms.put(roomId, room);
+
+        // Track which room each player is in
+        for (WebSocket conn : connections) {
+            playerToRoom.put(conn, roomId);
+        }
+
+        System.out.println("Created " + gameMode + " room " + roomId + " with " + players.size() + " players");
+        return room;
+    }
+
+    public void removeRoom(String roomId) {
+        Room room = rooms.remove(roomId);
+        if (room != null) {
+            // Remove player mappings
+            playerToRoom.values().removeIf(rid -> rid.equals(roomId));
+            System.out.println("Removed room " + roomId);
+        }
+    }
+
+    public Room getRoom(String roomId) {
+        return rooms.get(roomId);
+    }
+
+    public Room getRoomByPlayer(WebSocket connection) {
+        String roomId = playerToRoom.get(connection);
+        if (roomId == null) return null;
+        return rooms.get(roomId);
+    }
+
+    public void onPlayerDisconnect(WebSocket connection) {
+        String roomId = playerToRoom.remove(connection);
+        if (roomId != null) {
+            Room room = rooms.get(roomId);
+            if (room != null) {
+                room.removePlayer(connection);
+                if (room.isEmpty()) {
+                    removeRoom(roomId);
+                }
+            }
+        }
+    }
+
+    public Collection<Room> getAllRooms() {
+        return rooms.values();
+    }
+
+    public int getActiveRoomCount() {
+        return rooms.size();
+    }
+}

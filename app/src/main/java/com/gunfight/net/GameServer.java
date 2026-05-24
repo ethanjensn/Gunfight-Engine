@@ -1,29 +1,22 @@
 package com.gunfight.net;
 
 import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
-import com.gunfight.engine.Room;
+import com.gunfight.lobby.LobbyManager;
 import com.google.gson.Gson;
 
 public class GameServer extends WebSocketServer {
-    // Mailbox for incoming requests — shared across all rooms for simplicity
+    // Mailbox for incoming game inputs - passed to ECS rooms
     private Queue<InputPacket> inputQueue = new ConcurrentLinkedQueue<>();
 
-    // All active rooms
-    private final List<Room> rooms = new CopyOnWriteArrayList<>();
-
-    // Map each connection to its room for fast lookup
-    private final Map<WebSocket, Room> connectionToRoom = new ConcurrentHashMap<>();
+    // Lobby manager handles matchmaking and room lifecycle
+    private LobbyManager lobbyManager;
 
     private final Gson gson = new Gson();
 
@@ -34,40 +27,18 @@ public class GameServer extends WebSocketServer {
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         System.out.println("New connection: " + conn.getRemoteSocketAddress());
-
-        // Find an open room or create a new one
-        Room room = findOrCreateRoom();
-        room.addPlayer(conn);
-        connectionToRoom.put(conn, room);
+        lobbyManager.onConnect(conn);
     }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        Room room = connectionToRoom.remove(conn);
-        if (room != null) {
-            room.removePlayer(conn);
-            if (room.isEmpty()) {
-                rooms.remove(room);
-                System.out.println("Empty room removed");
-            }
-        }
+        lobbyManager.onDisconnect(conn);
     }
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        Room room = connectionToRoom.get(conn);
-        if (room == null) return;
-
-        Integer playerId = room.getEntityId(conn);
-        if (playerId == null) return;
-
-        try {
-            InputPacket packet = gson.fromJson(message, InputPacket.class);
-            packet.setEntityId(playerId);
-            inputQueue.add(packet);
-        } catch (Exception e) {
-            System.out.println("Failed to parse JSON from player " + playerId);
-        }
+        // Route all messages through lobby manager
+        lobbyManager.onMessage(conn, message);
     }
 
     @Override
@@ -78,6 +49,15 @@ public class GameServer extends WebSocketServer {
     @Override
     public void onStart() {
         System.out.println("Game server started on port " + getPort());
+        // Initialize and start lobby manager
+        this.lobbyManager = new LobbyManager(this);
+        lobbyManager.start();
+    }
+    
+    public void shutdown() {
+        if (lobbyManager != null) {
+            lobbyManager.stop();
+        }
     }
 
     public Queue<InputPacket> getInputQueue() {
@@ -85,18 +65,14 @@ public class GameServer extends WebSocketServer {
     }
 
     public void broadcast(String message) {
-        for (WebSocket conn : connectionToRoom.keySet()) {
-            conn.send(message);
+        // Broadcast to all connected clients via lobby manager
+        if (lobbyManager != null) {
+            // This will be handled by the appropriate system
         }
     }
-
-    private Room findOrCreateRoom() {
-        for (Room room : rooms) {
-            if (!room.isFull()) return room;
-        }
-        Room newRoom = Room.create(this);
-        rooms.add(newRoom);
-        System.out.println("New room created — total rooms: " + rooms.size());
-        return newRoom;
+    
+    // For direct game input from players in rooms
+    public void addGameInput(InputPacket packet) {
+        inputQueue.add(packet);
     }
 }
