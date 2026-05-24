@@ -116,6 +116,9 @@
             }
         }
 
+        const FOV_DEGREES = 90;
+        const VISION_RANGE = 400;
+
         function getPlayerColor(id) {
             if (id === localPlayerId) return '#00ff00'; // Green - local player
             // For 2v2: IDs 0,1 vs 2,3 - first two are team A, next two are team B
@@ -125,76 +128,118 @@
             return '#ff4444'; // Red - enemy
         }
 
+        function raySegmentIntersect(ox, oy, dx, dy, x1, y1, x2, y2) {
+            const ex = x2 - x1, ey = y2 - y1;
+            const denom = dx * ey - dy * ex;
+            if (Math.abs(denom) < 1e-8) return null;
+            const t = ((x1 - ox) * ey - (y1 - oy) * ex) / denom;
+            const u = ((x1 - ox) * dy - (y1 - oy) * dx) / denom;
+            if (t > 0 && u >= 0 && u <= 1) return t;
+            return null;
+        }
+
+        function castRay(ox, oy, angle) {
+            const dx = Math.cos(angle), dy = Math.sin(angle);
+            let minT = VISION_RANGE;
+            for (const wall of walls) {
+                const segs = [
+                    [wall.x,         wall.y,          wall.x+wall.w, wall.y        ],
+                    [wall.x+wall.w,  wall.y,          wall.x+wall.w, wall.y+wall.h ],
+                    [wall.x+wall.w,  wall.y+wall.h,   wall.x,        wall.y+wall.h ],
+                    [wall.x,         wall.y+wall.h,   wall.x,        wall.y        ]
+                ];
+                for (const [x1,y1,x2,y2] of segs) {
+                    const t = raySegmentIntersect(ox, oy, dx, dy, x1, y1, x2, y2);
+                    if (t !== null && t < minT) minT = t;
+                }
+            }
+            return { x: ox + dx * minT, y: oy + dy * minT };
+        }
+
+        function buildVisibilityPolygon(ox, oy, aimAngle) {
+            const half = (FOV_DEGREES * Math.PI) / 360;
+            const startAngle = aimAngle - half;
+            const endAngle   = aimAngle + half;
+            const angles = [startAngle, endAngle];
+            for (const wall of walls) {
+                for (const [cx, cy] of [
+                    [wall.x,         wall.y        ],
+                    [wall.x+wall.w,  wall.y        ],
+                    [wall.x+wall.w,  wall.y+wall.h ],
+                    [wall.x,         wall.y+wall.h ]
+                ]) {
+                    let rel = Math.atan2(cy - oy, cx - ox) - aimAngle;
+                    while (rel >  Math.PI) rel -= 2 * Math.PI;
+                    while (rel < -Math.PI) rel += 2 * Math.PI;
+                    if (rel >= -half && rel <= half) {
+                        const a = aimAngle + rel;
+                        angles.push(a - 0.0001, a, a + 0.0001);
+                    }
+                }
+            }
+            angles.sort((a, b) => a - b);
+            const pts = [];
+            for (const a of angles) {
+                const clamped = Math.max(startAngle, Math.min(endAngle, a));
+                pts.push(castRay(ox, oy, clamped));
+            }
+            return pts;
+        }
+
+        function applyVisibilityClip(ox, oy, aimAngle) {
+            const pts = buildVisibilityPolygon(ox, oy, aimAngle);
+            ctx.beginPath();
+            ctx.moveTo(ox, oy);
+            for (const p of pts) ctx.lineTo(p.x, p.y);
+            ctx.closePath();
+            ctx.clip();
+        }
+
+        function drawPlayer(player) {
+            if (player.dead) return;
+            const cx = player.x + PLAYER_RADIUS;
+            const cy = player.y + PLAYER_RADIUS;
+
+            ctx.fillStyle = getPlayerColor(player.id);
+            ctx.beginPath();
+            ctx.arc(cx, cy, PLAYER_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+
+            const barX = cx - BAR_WIDTH / 2;
+            const healthBarY = player.y - BAR_OFFSET_Y - HEALTH_BAR_HEIGHT - BAR_GAP - AMMO_BAR_HEIGHT;
+
+            if (player.maxHealth > 0) {
+                const hpRatio = Math.max(0, player.health / player.maxHealth);
+                ctx.fillStyle = '#555';
+                ctx.fillRect(barX, healthBarY, BAR_WIDTH, HEALTH_BAR_HEIGHT);
+                ctx.fillStyle = hpRatio > 0.5 ? '#44ff44' : hpRatio > 0.25 ? '#ffcc00' : '#ff4444';
+                ctx.fillRect(barX, healthBarY, BAR_WIDTH * hpRatio, HEALTH_BAR_HEIGHT);
+            }
+
+            if (player.maxAmmo > 0) {
+                const ammoBarY = healthBarY + HEALTH_BAR_HEIGHT + BAR_GAP;
+                const ammoRatio = player.ammo / player.maxAmmo;
+                const ratio = player.reloading
+                    ? ammoRatio + (1 - ammoRatio) * (player.reloadProgress || 0)
+                    : ammoRatio;
+                ctx.fillStyle = '#555';
+                ctx.fillRect(barX, ammoBarY, BAR_WIDTH, AMMO_BAR_HEIGHT);
+                ctx.fillStyle = ratio > 0.5 ? '#44ff44' : ratio > 0.25 ? '#ffcc00' : '#ff4444';
+                ctx.fillRect(barX, ammoBarY, BAR_WIDTH * ratio, AMMO_BAR_HEIGHT);
+            }
+
+            ctx.fillStyle = 'white';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(player.id, cx, player.y - BAR_OFFSET_Y - HEALTH_BAR_HEIGHT - BAR_GAP - AMMO_BAR_HEIGHT - 4);
+        }
+
         function render() {
             // Clear canvas
             ctx.fillStyle = '#333';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw all players as circles
-            for (const player of players) {
-                if (player.dead) continue;
-
-                const cx = player.x + PLAYER_RADIUS;
-                const cy = player.y + PLAYER_RADIUS;
-
-                ctx.fillStyle = getPlayerColor(player.id);
-                ctx.beginPath();
-                ctx.arc(cx, cy, PLAYER_RADIUS, 0, Math.PI * 2);
-                ctx.fill();
-
-                const barX = cx - BAR_WIDTH / 2;
-
-                // Health bar (top bar)
-                const healthBarY = player.y - BAR_OFFSET_Y - HEALTH_BAR_HEIGHT - BAR_GAP - AMMO_BAR_HEIGHT;
-                if (player.maxHealth > 0) {
-                    const hpRatio = Math.max(0, player.health / player.maxHealth);
-
-                    ctx.fillStyle = '#555';
-                    ctx.fillRect(barX, healthBarY, BAR_WIDTH, HEALTH_BAR_HEIGHT);
-
-                    if (hpRatio > 0.5) {
-                        ctx.fillStyle = '#44ff44';
-                    } else if (hpRatio > 0.25) {
-                        ctx.fillStyle = '#ffcc00';
-                    } else {
-                        ctx.fillStyle = '#ff4444';
-                    }
-                    ctx.fillRect(barX, healthBarY, BAR_WIDTH * hpRatio, HEALTH_BAR_HEIGHT);
-                }
-
-                // Ammo bar (below health bar)
-                const ammoBarY = healthBarY + HEALTH_BAR_HEIGHT + BAR_GAP;
-                if (player.maxAmmo > 0) {
-                    const ammoRatio = player.ammo / player.maxAmmo;
-
-                    let ratio;
-                    if (player.reloading) {
-                        ratio = ammoRatio + (1.0 - ammoRatio) * (player.reloadProgress || 0);
-                    } else {
-                        ratio = ammoRatio;
-                    }
-
-                    ctx.fillStyle = '#555';
-                    ctx.fillRect(barX, ammoBarY, BAR_WIDTH, AMMO_BAR_HEIGHT);
-
-                    if (ratio > 0.5) {
-                        ctx.fillStyle = '#44ff44';
-                    } else if (ratio > 0.25) {
-                        ctx.fillStyle = '#ffcc00';
-                    } else {
-                        ctx.fillStyle = '#ff4444';
-                    }
-                    ctx.fillRect(barX, ammoBarY, BAR_WIDTH * ratio, AMMO_BAR_HEIGHT);
-                }
-
-                // Draw player ID label above both bars
-                ctx.fillStyle = 'white';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(player.id, cx, healthBarY - 4);
-            }
-
-            // Draw walls
+            // Draw walls (always fully visible)
             ctx.fillStyle = '#888888';
             ctx.strokeStyle = '#555555';
             ctx.lineWidth = 2;
@@ -203,13 +248,32 @@
                 ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
             }
 
-            // Draw all projectiles as small yellow circles
+            // Draw projectiles (always visible)
             ctx.fillStyle = '#ffff00';
             for (const projectile of projectiles) {
                 ctx.beginPath();
                 ctx.arc(projectile.x, projectile.y, PROJECTILE_RADIUS, 0, Math.PI * 2);
                 ctx.fill();
             }
+
+            const localPlayer = players.find(p => p.id === localPlayerId);
+
+            // Draw other players clipped to the visibility polygon
+            const otherPlayers = players.filter(p => p.id !== localPlayerId);
+            if (localPlayer && !localPlayer.dead && otherPlayers.length > 0) {
+                const lx = localPlayer.x + PLAYER_RADIUS;
+                const ly = localPlayer.y + PLAYER_RADIUS;
+                const aimAngle = Math.atan2(mouseY - ly, mouseX - lx);
+                ctx.save();
+                applyVisibilityClip(lx, ly, aimAngle);
+                for (const player of otherPlayers) drawPlayer(player);
+                ctx.restore();
+            } else {
+                for (const player of otherPlayers) drawPlayer(player);
+            }
+
+            // Local player always drawn fully (no clip)
+            if (localPlayer) drawPlayer(localPlayer);
 
             // Phase overlay
             drawOverlay();

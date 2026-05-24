@@ -11,9 +11,14 @@ import com.gunfight.logic.ReloadSystem;
 import com.gunfight.logic.CombatSystem;
 import com.gunfight.logic.DeathSystem;
 import com.gunfight.logic.RoundSystem;
+import com.gunfight.logic.VisionSystem;
 import com.gunfight.logic.ProjectilePool;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
+
+import java.util.Map;
+
+import org.java_websocket.WebSocket;
 
 public class GameLoop implements Runnable {
     private boolean running = false;
@@ -29,18 +34,19 @@ public class GameLoop implements Runnable {
     private ReloadSystem reloadSystem = new ReloadSystem();
     private DeathSystem deathSystem = new DeathSystem();
     private RoundSystem roundSystem = new RoundSystem();
+    private VisionSystem visionSystem = new VisionSystem();
     private NetworkBroadcastSystem broadcastSystem;
 
     // GameWorld — to access entities and components when running systems
     // Queue<InputPacket> — to grab network inputs each tick and apply them
-    public GameLoop(GameWorld world, Queue<InputPacket> inputQueue, GameServer server) {
+    public GameLoop(GameWorld world, Queue<InputPacket> inputQueue, GameServer server, Map<WebSocket, Integer> connectionToEntity) {
         this.world = world;
         this.inputQueue = inputQueue;
         this.projectilePool = new ProjectilePool(world);
         this.weaponSystem = new WeaponSystem(projectilePool);
         this.projectileSystem = new ProjectileSystem(projectilePool);
         this.combatSystem = new CombatSystem(projectilePool);
-        this.broadcastSystem = new NetworkBroadcastSystem(server);
+        this.broadcastSystem = new NetworkBroadcastSystem(server, connectionToEntity);
     }
 
     public void start() {
@@ -94,6 +100,9 @@ public class GameLoop implements Runnable {
 
         // Handle round transitions, scoring, and respawns
         roundSystem.update(world);
+
+        // Compute per-player line-of-sight
+        visionSystem.update(world);
 
         // Broadcast world state to all clients
         broadcastSystem.update(world, tickCount);

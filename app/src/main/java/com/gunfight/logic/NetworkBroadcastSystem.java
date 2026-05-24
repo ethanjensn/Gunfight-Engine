@@ -2,7 +2,10 @@ package com.gunfight.logic;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import org.java_websocket.WebSocket;
 
 import com.gunfight.engine.GameWorld;
 import com.gunfight.data.PositionComponent;
@@ -12,6 +15,7 @@ import com.gunfight.data.ScoreComponent;
 import com.gunfight.data.WeaponComponent;
 import com.gunfight.data.HealthComponent;
 import com.gunfight.data.RespawnComponent;
+import com.gunfight.data.VisionComponent;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.GameStatePacket;
 import com.gunfight.net.GameStatePacket.PlayerState;
@@ -21,7 +25,7 @@ import com.gunfight.data.WallComponent;
 import com.google.gson.Gson;
 
 public class NetworkBroadcastSystem {
-    private GameServer server;
+    private final Map<WebSocket, Integer> connectionToEntity;
     private Gson gson = new Gson();
 
     // Object pool: pre-allocated PlayerState objects that get reused
@@ -29,16 +33,19 @@ public class NetworkBroadcastSystem {
     private final List<ProjectileState> projectilePool = new ArrayList<>();
     private final List<WallState> wallPool = new ArrayList<>();
 
-    // Active states for this tick
+    // Active states for this tick (full world view, built once)
     private final List<PlayerState> activeStates = new ArrayList<>();
     private final List<ProjectileState> activeProjectiles = new ArrayList<>();
     private final List<WallState> activeWalls = new ArrayList<>();
 
-    // Permanent packet - Gson reads from active states each tick
-    private final GameStatePacket packet = new GameStatePacket(activeStates, activeProjectiles, activeWalls);
+    // Scratch list reused per-client — no allocation each tick
+    private final List<PlayerState> filteredStates = new ArrayList<>();
 
-    public NetworkBroadcastSystem(GameServer server) {
-        this.server = server;
+    // Permanent packet — Gson reads from filteredStates per client
+    private final GameStatePacket packet = new GameStatePacket(filteredStates, activeProjectiles, activeWalls);
+
+    public NetworkBroadcastSystem(GameServer server, Map<WebSocket, Integer> connectionToEntity) {
+        this.connectionToEntity = connectionToEntity;
     }
 
     public void update(GameWorld world, int currentTick) {
@@ -152,8 +159,29 @@ public class NetworkBroadcastSystem {
             }
         }
 
-        // Reuse same packet - Gson serializes active states which now point to recycled objects
-        String json = gson.toJson(packet);
-        server.broadcast(json);
+        // Send a per-client filtered packet — only include players visible to that client
+        for (Map.Entry<WebSocket, Integer> entry : connectionToEntity.entrySet()) {
+            WebSocket conn = entry.getKey();
+            int observerId = entry.getValue();
+
+            VisionComponent vision = world.getComponent(VisionComponent.class, observerId);
+
+            filteredStates.clear();
+            if (vision == null) {
+                // No vision component — fall back to sending all players
+                filteredStates.addAll(activeStates);
+            } else {
+                for (PlayerState ps : activeStates) {
+                    if (vision.visibleIds.contains(ps.id)) {
+                        filteredStates.add(ps);
+                    }
+                }
+            }
+
+            String json = gson.toJson(packet);
+            if (conn.isOpen()) {
+                conn.send(json);
+            }
+        }
     }
 }

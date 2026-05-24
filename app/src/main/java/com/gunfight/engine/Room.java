@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.java_websocket.WebSocket;
 
 import com.gunfight.data.HealthComponent;
+import com.gunfight.data.VisionComponent;
 import com.gunfight.data.InputComponent;
 import com.gunfight.data.PlayerSlotComponent;
 import com.gunfight.data.PositionComponent;
@@ -25,20 +26,22 @@ public class Room {
 
     private final GameWorld world;
     private final GameLoop loop;
-    private final Map<WebSocket, Integer> connectionToEntity = new ConcurrentHashMap<>();
+    private final Map<WebSocket, Integer> connectionToEntity;
     private int nextSlot = 0;
 
-    private Room(GameWorld world, GameLoop loop) {
+    private Room(GameWorld world, GameLoop loop, Map<WebSocket, Integer> connectionToEntity) {
         this.world = world;
         this.loop = loop;
+        this.connectionToEntity = connectionToEntity;
     }
 
     public static Room create(GameServer server) {
         GameWorld world = new GameWorld();
         Queue<InputPacket> inputQueue = server.getInputQueue();
-        GameLoop loop = new GameLoop(world, inputQueue, server);
+        Map<WebSocket, Integer> connMap = new ConcurrentHashMap<>();
+        GameLoop loop = new GameLoop(world, inputQueue, server, connMap);
 
-        Room room = new Room(world, loop);
+        Room room = new Room(world, loop, connMap);
 
         // Create the singleton match-state entity
         int matchEntity = world.createEntity();
@@ -64,6 +67,7 @@ public class Room {
         world.addComponent(InputComponent.class, entityId, new InputComponent());
         world.addComponent(WeaponComponent.class, entityId, new WeaponComponent(10, (short) 50, (short) 50, 3, 90));
         world.addComponent(ScoreComponent.class, entityId, new ScoreComponent());
+        world.addComponent(VisionComponent.class, entityId, new VisionComponent(400f, 90f));
 
         connectionToEntity.put(conn, entityId);
 
@@ -93,5 +97,9 @@ public class Room {
 
     public GameWorld getWorld() {
         return world;
+    }
+
+    public Map<WebSocket, Integer> getConnectionToEntity() {
+        return connectionToEntity;
     }
 }
