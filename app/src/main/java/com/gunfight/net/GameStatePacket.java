@@ -5,6 +5,8 @@ import java.util.List;
 public class GameStatePacket {
     public List<PlayerState> players;
     public List<ProjectileState> projectiles;
+    public String phase;
+    public int roundNumber;
 
     public GameStatePacket(List<PlayerState> players, List<ProjectileState> projectiles) {
         this.players = players;
@@ -22,6 +24,8 @@ public class GameStatePacket {
         public int health;
         public int maxHealth;
         public boolean dead;
+        public int wins;
+        public boolean readyForRematch;
 
         public PlayerState(int id, float x, float y) {
             this.id = id;

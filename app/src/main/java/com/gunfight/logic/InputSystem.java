@@ -3,6 +3,7 @@ package com.gunfight.logic;
 import java.util.Queue;
 import com.gunfight.engine.GameWorld;
 import com.gunfight.data.InputComponent;
+import com.gunfight.data.ScoreComponent;
 import com.gunfight.net.InputPacket;
 
 public class InputSystem {
@@ -22,6 +23,11 @@ public class InputSystem {
                 input.isReloading = packet.isReloading;
                 input.cursorX = packet.cursorX;
                 input.cursorY = packet.cursorY;
+            }
+
+            if (packet.ready) {
+                ScoreComponent score = world.getComponent(ScoreComponent.class, packet.getEntityId());
+                if (score != null) score.readyForRematch = true;
             }
         }        
     }

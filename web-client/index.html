@@ -23,6 +23,8 @@
         let localPlayerId = null;
         let players = [];
         let projectiles = [];
+        let phase = 'WAITING';
+        let roundNumber = 0;
         const keys = {};
         const PLAYER_SIZE = 32;
         const PLAYER_RADIUS = PLAYER_SIZE / 2;
@@ -50,6 +52,8 @@
             if (data.projectiles) {
                 projectiles = data.projectiles;
             }
+            if (data.phase) phase = data.phase;
+            if (data.roundNumber !== undefined) roundNumber = data.roundNumber;
         };
 
         // WASD input handling
@@ -86,7 +90,9 @@
             sendInput();
         });
 
-        function sendInput() {
+        let readySent = false;
+
+        function sendInput(overrides = {}) {
             const packet = {
                 moveUp: keys['w'] || false,
                 moveDown: keys['s'] || false,
@@ -95,9 +101,17 @@
                 isFiring: isMouseDown,
                 isReloading: keys['r'] || false,
                 cursorX: mouseX,
-                cursorY: mouseY
+                cursorY: mouseY,
+                ...overrides
             };
             socket.send(JSON.stringify(packet));
+        }
+
+        function sendReady() {
+            if (!readySent) {
+                readySent = true;
+                sendInput({ ready: true });
+            }
         }
 
         function getPlayerColor(id) {
@@ -186,8 +200,63 @@
                 ctx.fill();
             }
 
+            // Phase overlay
+            drawOverlay();
+
             requestAnimationFrame(render);
         }
+
+        function drawOverlay() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            if (phase === 'WAITING') {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 36px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Waiting for players...', cx, cy);
+            } else if (phase === 'ROUND_OVER') {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 40px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Round ' + (roundNumber + 1) + ' Over', cx, cy - 20);
+                ctx.font = '22px sans-serif';
+                ctx.fillText('Next round starting...', cx, cy + 20);
+            } else if (phase === 'IN_ROUND' && roundNumber > 0) {
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('Round ' + (roundNumber + 1), 12, 24);
+            } else if (phase === 'MATCH_OVER') {
+                const winner = players.find(p => p.wins >= 3);
+                ctx.fillStyle = 'rgba(0,0,0,0.65)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 48px sans-serif';
+                ctx.textAlign = 'center';
+                const label = winner && winner.id === localPlayerId ? 'You Win!' :
+                              winner ? 'You Lose' : 'Match Over';
+                ctx.fillText(label, cx, cy - 40);
+                const readyCount = players.filter(p => p.readyForRematch).length;
+                ctx.fillStyle = 'white';
+                ctx.font = '22px sans-serif';
+                ctx.fillText('Press SPACE to play again', cx, cy + 10);
+                ctx.fillStyle = readyCount > 0 ? '#44ff44' : '#aaaaaa';
+                ctx.font = '18px sans-serif';
+                ctx.fillText(readyCount + '/2 players ready', cx, cy + 42);
+                readySent = false;
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && phase === 'MATCH_OVER') {
+                sendReady();
+            }
+        });
 
         // Start render loop
         render();

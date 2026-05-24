@@ -2,11 +2,18 @@ package com.gunfight.logic;
 
 import java.util.Set;
 import com.gunfight.engine.GameWorld;
+import com.gunfight.data.RoundStateComponent;
+import com.gunfight.data.RoundStateComponent.RoundPhase;
 import com.gunfight.data.WeaponComponent;
 import com.gunfight.data.InputComponent;
 
 public class ReloadSystem {
     public void update(GameWorld world, int currentTick) {
+        Set<Integer> matchEntities = world.getAllEntitiesWithComponent(RoundStateComponent.class);
+        if (matchEntities.isEmpty()) return;
+        RoundStateComponent roundState = world.getComponent(RoundStateComponent.class, matchEntities.iterator().next());
+        if (roundState == null || roundState.phase != RoundPhase.IN_ROUND) return;
+
         Set<Integer> entities = world.getAllEntitiesWithComponent(WeaponComponent.class);
 
         for (int entityId : entities) {

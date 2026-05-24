@@ -10,8 +10,6 @@ import com.gunfight.data.WeaponComponent;
 import com.gunfight.data.RespawnComponent;
 
 public class DeathSystem {
-    private static final int RESPAWN_TICKS = 180; // 3 seconds at 60 tps
-
     // Reusable list to avoid allocating every tick
     private final List<Integer> deadEntities = new ArrayList<>();
 
@@ -39,9 +37,9 @@ public class DeathSystem {
             world.removeComponent(InputComponent.class, entityId);
             world.removeComponent(WeaponComponent.class, entityId);
 
-            // Attach respawn state — spawn at top-left (0, 0)
+            // Mark as dead — RoundSystem reads this and handles the round transition
             world.addComponent(RespawnComponent.class, entityId,
-                new RespawnComponent(RESPAWN_TICKS, 0f, 0f));
+                new RespawnComponent(0, 0f, 0f));
         }
     }
 }

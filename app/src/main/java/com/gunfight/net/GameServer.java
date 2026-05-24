@@ -1,83 +1,72 @@
 package com.gunfight.net;
- 
+
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.java_websocket.WebSocket;  // Fixed import
+import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
-import com.gunfight.data.HealthComponent;
-import com.gunfight.data.InputComponent;
-import com.gunfight.data.PositionComponent;
-import com.gunfight.data.WeaponComponent;
-import com.gunfight.engine.GameWorld;
-import com.google.gson.Gson; // Make sure you import this at the top
+import com.gunfight.engine.Room;
+import com.google.gson.Gson;
 
 public class GameServer extends WebSocketServer {
-    private GameWorld world;
-    // Mailbox for incoming requests
+    // Mailbox for incoming requests — shared across all rooms for simplicity
     private Queue<InputPacket> inputQueue = new ConcurrentLinkedQueue<>();
 
-    // Map connections to player IDs
-    private Map<WebSocket, Integer> connectionToEntity = new ConcurrentHashMap<>();
-    
-    public GameServer(int port, GameWorld world) {
-        // super() simply says: "Run the parent's setup code first."
+    // All active rooms
+    private final List<Room> rooms = new CopyOnWriteArrayList<>();
+
+    // Map each connection to its room for fast lookup
+    private final Map<WebSocket, Room> connectionToRoom = new ConcurrentHashMap<>();
+
+    private final Gson gson = new Gson();
+
+    public GameServer(int port) {
         super(new InetSocketAddress(port));
-        this.world = world;
     }
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         System.out.println("New connection: " + conn.getRemoteSocketAddress());
 
-        // create a new player entity when someone connects
-        int newEntityId = world.createEntity();
-
-        // add starting components
-        world.addComponent(HealthComponent.class, newEntityId, new HealthComponent(100));
-        world.addComponent(InputComponent.class, newEntityId, new InputComponent());
-        world.addComponent(PositionComponent.class, newEntityId, new PositionComponent(0, 0));
-        world.addComponent(WeaponComponent.class, newEntityId, new WeaponComponent(10, (short)50, (short)50, 3, 90));
-
-        // map the connection to the entity ID
-        connectionToEntity.put(conn, newEntityId);
+        // Find an open room or create a new one
+        Room room = findOrCreateRoom();
+        room.addPlayer(conn);
+        connectionToRoom.put(conn, room);
     }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        Integer entityId = connectionToEntity.remove(conn);
-
-        if (entityId != null) {
-            world.destroyEntity(entityId);
-            System.out.println("Player " + entityId + " disconnected");
+        Room room = connectionToRoom.remove(conn);
+        if (room != null) {
+            room.removePlayer(conn);
+            if (room.isEmpty()) {
+                rooms.remove(room);
+                System.out.println("Empty room removed");
+            }
         }
     }
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        Integer playerId = connectionToEntity.get(conn);
+        Room room = connectionToRoom.get(conn);
+        if (room == null) return;
 
-        if (playerId != null) {
-            try {
-                // 1. Turn the JSON text into a Java Object
-                InputPacket packet = new Gson().fromJson(message, InputPacket.class);
-                
-                // 2. Set the entity ID
-                packet.setEntityId(playerId);
+        Integer playerId = room.getEntityId(conn);
+        if (playerId == null) return;
 
-                // 3. Add the packet to the mailbox
-                inputQueue.add(packet);
-
-            } catch (Exception e) {
-                System.out.println("Failed to parse JSON from player " + playerId);
-            }
-
-            System.out.println("Received message from player " + playerId + ": " + message);
+        try {
+            InputPacket packet = gson.fromJson(message, InputPacket.class);
+            packet.setEntityId(playerId);
+            inputQueue.add(packet);
+        } catch (Exception e) {
+            System.out.println("Failed to parse JSON from player " + playerId);
         }
     }
 
@@ -96,8 +85,18 @@ public class GameServer extends WebSocketServer {
     }
 
     public void broadcast(String message) {
-        for (WebSocket conn : connectionToEntity.keySet()) {
+        for (WebSocket conn : connectionToRoom.keySet()) {
             conn.send(message);
         }
+    }
+
+    private Room findOrCreateRoom() {
+        for (Room room : rooms) {
+            if (!room.isFull()) return room;
+        }
+        Room newRoom = Room.create(this);
+        rooms.add(newRoom);
+        System.out.println("New room created — total rooms: " + rooms.size());
+        return newRoom;
     }
 }

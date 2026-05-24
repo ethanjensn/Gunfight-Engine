@@ -7,6 +7,8 @@ import java.util.Set;
 import com.gunfight.engine.GameWorld;
 import com.gunfight.data.PositionComponent;
 import com.gunfight.data.ProjectileComponent;
+import com.gunfight.data.RoundStateComponent;
+import com.gunfight.data.ScoreComponent;
 import com.gunfight.data.WeaponComponent;
 import com.gunfight.data.HealthComponent;
 import com.gunfight.data.RespawnComponent;
@@ -102,8 +104,25 @@ public class NetworkBroadcastSystem {
             RespawnComponent respawn = world.getComponent(RespawnComponent.class, entityId);
             state.dead = (respawn != null);
 
+            ScoreComponent score = world.getComponent(ScoreComponent.class, entityId);
+            if (score != null) {
+                state.wins = score.wins;
+                state.readyForRematch = score.readyForRematch;
+            }
+
             activeStates.add(state);
             playerIndex++;
+        }
+
+        // Populate round state from the singleton match entity
+        Set<Integer> matchEntities = world.getAllEntitiesWithComponent(RoundStateComponent.class);
+        if (!matchEntities.isEmpty()) {
+            RoundStateComponent roundState = world.getComponent(RoundStateComponent.class,
+                    matchEntities.iterator().next());
+            if (roundState != null) {
+                packet.phase = roundState.phase.name();
+                packet.roundNumber = roundState.roundNumber;
+            }
         }
 
         // Reuse same packet - Gson serializes active states which now point to recycled objects

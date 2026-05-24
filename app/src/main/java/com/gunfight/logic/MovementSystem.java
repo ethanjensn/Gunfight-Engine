@@ -3,7 +3,9 @@ package com.gunfight.logic;
 import java.util.Set;
 import com.gunfight.engine.GameWorld;
 import com.gunfight.data.PositionComponent;
-import com.gunfight.data.InputComponent; 
+import com.gunfight.data.InputComponent;
+import com.gunfight.data.RoundStateComponent;
+import com.gunfight.data.RoundStateComponent.RoundPhase;
 
 public class MovementSystem {
     private static final float MOVE_SPEED = 5.0f;
@@ -12,6 +14,12 @@ public class MovementSystem {
     private static final float PLAYER_SIZE = 32f;
 
     public void update(GameWorld world) {
+        // Only allow movement when a round is actively in progress
+        Set<Integer> matchEntities = world.getAllEntitiesWithComponent(RoundStateComponent.class);
+        if (matchEntities.isEmpty()) return;
+        RoundStateComponent roundState = world.getComponent(RoundStateComponent.class, matchEntities.iterator().next());
+        if (roundState == null || roundState.phase != RoundPhase.IN_ROUND) return;
+
         // Get all entities with Position components
         Set<Integer> entities = world.getAllEntitiesWithComponent(PositionComponent.class);
         

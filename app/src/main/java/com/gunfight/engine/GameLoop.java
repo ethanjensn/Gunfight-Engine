@@ -10,7 +10,7 @@ import com.gunfight.logic.ProjectileSystem;
 import com.gunfight.logic.ReloadSystem;
 import com.gunfight.logic.CombatSystem;
 import com.gunfight.logic.DeathSystem;
-import com.gunfight.logic.RespawnSystem;
+import com.gunfight.logic.RoundSystem;
 import com.gunfight.logic.ProjectilePool;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
@@ -28,7 +28,7 @@ public class GameLoop implements Runnable {
     private CombatSystem combatSystem;
     private ReloadSystem reloadSystem = new ReloadSystem();
     private DeathSystem deathSystem = new DeathSystem();
-    private RespawnSystem respawnSystem = new RespawnSystem();
+    private RoundSystem roundSystem = new RoundSystem();
     private NetworkBroadcastSystem broadcastSystem;
 
     // GameWorld — to access entities and components when running systems
@@ -92,8 +92,8 @@ public class GameLoop implements Runnable {
         // Check for deaths (health <= 0) — strips Input/Weapon, adds RespawnComponent
         deathSystem.update(world);
 
-        // Tick down respawn timers — revives players when ready
-        respawnSystem.update(world);
+        // Handle round transitions, scoring, and respawns
+        roundSystem.update(world);
 
         // Broadcast world state to all clients
         broadcastSystem.update(world, tickCount);

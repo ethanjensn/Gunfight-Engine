@@ -9,6 +9,7 @@ public class InputPacket {
     public boolean isReloading;
     public float cursorX;
     public float cursorY;
+    public boolean ready;
 
     // Internal ID used by the server, not sent by the browser
     private int entityId;
