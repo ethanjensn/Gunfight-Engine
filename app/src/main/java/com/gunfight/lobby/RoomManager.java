@@ -31,18 +31,18 @@ public class RoomManager {
                 ": expected " + requiredPlayers + ", got " + players.size());
         }
 
-        // Extract WebSocket connections
-        List<WebSocket> connections = new ArrayList<>();
+        // Build WebSocket-to-username map for room creation
+        Map<WebSocket, String> playerUsernames = new HashMap<>();
         for (QueueEntry entry : players) {
-            connections.add(entry.connection);
+            playerUsernames.put(entry.connection, entry.username);
         }
 
         String roomId = "room-" + (nextRoomId++);
-        Room room = Room.create(gameServer, gameMode, connections);
+        Room room = Room.create(gameServer, gameMode, playerUsernames);
         rooms.put(roomId, room);
 
         // Track which room each player is in
-        for (WebSocket conn : connections) {
+        for (WebSocket conn : playerUsernames.keySet()) {
             playerToRoom.put(conn, roomId);
         }
 

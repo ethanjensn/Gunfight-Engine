@@ -8,6 +8,8 @@ public class GameStatePacket {
     public List<WallState> walls;
     public String phase;
     public int roundNumber;
+    public List<String> roundWinners;
+    public List<String> matchWinners;
 
     public GameStatePacket(List<PlayerState> players, List<ProjectileState> projectiles, List<WallState> walls) {
         this.players = players;
@@ -19,6 +21,8 @@ public class GameStatePacket {
         public int id;
         public float x;
         public float y;
+        public String username;
+        public int slot;
         public short ammo;
         public short maxAmmo;
         public boolean reloading;

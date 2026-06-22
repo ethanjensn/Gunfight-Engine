@@ -306,6 +306,8 @@
         let walls = [];
         let phase = 'WAITING';
         let roundNumber = 0;
+        let roundWinners = [];
+        let matchWinners = [];
         const keys = {};
         const PLAYER_SIZE = 32;
         const PLAYER_RADIUS = PLAYER_SIZE / 2;
@@ -440,6 +442,8 @@
             if (data.walls) walls = data.walls;
             if (data.phase) phase = data.phase;
             if (data.roundNumber !== undefined) roundNumber = data.roundNumber;
+            if (data.roundWinners) roundWinners = data.roundWinners;
+            if (data.matchWinners) matchWinners = data.matchWinners;
         };
 
         // Mouse tracking for aiming (only active in game)
@@ -513,13 +517,26 @@
         const FOV_DEGREES = 90;
         const VISION_RANGE = 400;
 
-        function getPlayerColor(id) {
-            if (id === localPlayerId) return '#00ff00'; // Green - local player
-            // For team games: even slots vs odd slots
-            const localTeam = Math.floor(localPlayerId / 2);
-            const playerTeam = Math.floor(id / 2);
+        function getPlayerColor(player) {
+            if (player.id === localPlayerId) return '#00ff00'; // Green - local player
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            const localTeam = localPlayer ? localPlayer.slot % 2 : -1;
+            const playerTeam = player.slot % 2;
             if (localTeam === playerTeam) return '#0088ff'; // Blue - teammate
             return '#ff4444'; // Red - enemy
+        }
+
+        function isTeammate(player) {
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            if (!localPlayer) return false;
+            return player.slot % 2 === localPlayer.slot % 2;
+        }
+
+        function formatWinnerText(winners, suffix) {
+            if (!winners || winners.length === 0) return null;
+            const names = winners.join(' & ');
+            const verb = winners.length === 1 ? 'wins' : 'win';
+            return names + ' ' + verb + ' ' + suffix + '!';
         }
 
         function raySegmentIntersect(ox, oy, dx, dy, x1, y1, x2, y2) {
@@ -594,7 +611,7 @@
             const cx = player.x + PLAYER_RADIUS;
             const cy = player.y + PLAYER_RADIUS;
 
-            ctx.fillStyle = getPlayerColor(player.id);
+            ctx.fillStyle = getPlayerColor(player);
             ctx.beginPath();
             ctx.arc(cx, cy, PLAYER_RADIUS, 0, Math.PI * 2);
             ctx.fill();
@@ -622,10 +639,21 @@
                 ctx.fillRect(barX, ammoBarY, BAR_WIDTH * ratio, AMMO_BAR_HEIGHT);
             }
 
-            ctx.fillStyle = 'white';
-            ctx.font = '12px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(player.id, cx, player.y - BAR_OFFSET_Y - HEALTH_BAR_HEIGHT - BAR_GAP - AMMO_BAR_HEIGHT - 4);
+            if (player.username) {
+                const nameY = player.y - BAR_OFFSET_Y - HEALTH_BAR_HEIGHT - BAR_GAP - AMMO_BAR_HEIGHT - 6;
+                ctx.font = 'bold 13px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+                ctx.textAlign = 'center';
+                const width = ctx.measureText(player.username).width;
+                const pad = 2;
+                const ascent = 11;
+                const descent = 3;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.beginPath();
+                ctx.roundRect(cx - width / 2 - pad, nameY - ascent - pad, width + pad * 2, ascent + descent + pad * 2, 3);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.fillText(player.username, cx, nameY);
+            }
         }
 
         function render() {
@@ -651,19 +679,24 @@
             }
 
             const localPlayer = players.find(p => p.id === localPlayerId);
-
-            // Draw other players clipped to the visibility polygon
             const otherPlayers = players.filter(p => p.id !== localPlayerId);
-            if (localPlayer && !localPlayer.dead && otherPlayers.length > 0) {
+            const teammates = otherPlayers.filter(isTeammate);
+            const enemies = otherPlayers.filter(p => !isTeammate(p));
+
+            // Teammates are always drawn (no FOV clip)
+            for (const player of teammates) drawPlayer(player);
+
+            // Enemies are only visible inside the FOV cone
+            if (localPlayer && !localPlayer.dead && enemies.length > 0) {
                 const lx = localPlayer.x + PLAYER_RADIUS;
                 const ly = localPlayer.y + PLAYER_RADIUS;
                 const aimAngle = Math.atan2(mouseY - ly, mouseX - lx);
                 ctx.save();
                 applyVisibilityClip(lx, ly, aimAngle);
-                for (const player of otherPlayers) drawPlayer(player);
+                for (const player of enemies) drawPlayer(player);
                 ctx.restore();
             } else {
-                for (const player of otherPlayers) drawPlayer(player);
+                for (const player of enemies) drawPlayer(player);
             }
 
             // Local player always drawn fully (no clip)
@@ -692,23 +725,30 @@
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 40px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('Round ' + (roundNumber + 1) + ' Over', cx, cy - 20);
+                ctx.fillText('Round ' + (roundNumber + 1) + ' Over', cx, cy - 40);
                 ctx.font = '22px sans-serif';
-                ctx.fillText('Next round starting...', cx, cy + 20);
+                const winnerText = formatWinnerText(roundWinners, 'the round');
+                if (winnerText) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillText(winnerText, cx, cy);
+                    ctx.fillStyle = 'white';
+                    ctx.fillText('Next round starting...', cx, cy + 40);
+                } else {
+                    ctx.fillText('Next round starting...', cx, cy);
+                }
             } else if (phase === 'IN_ROUND' && roundNumber > 0) {
                 ctx.fillStyle = 'rgba(255,255,255,0.7)';
                 ctx.font = 'bold 18px sans-serif';
                 ctx.textAlign = 'left';
                 ctx.fillText('Round ' + (roundNumber + 1), 12, 24);
             } else if (phase === 'MATCH_OVER') {
-                const winner = players.find(p => p.wins >= 3);
                 ctx.fillStyle = 'rgba(0,0,0,0.65)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = '#ffd700';
                 ctx.font = 'bold 48px sans-serif';
                 ctx.textAlign = 'center';
-                const label = winner && winner.id === localPlayerId ? 'You Win!' :
-                              winner ? 'You Lose' : 'Match Over';
+                const winnerText = formatWinnerText(matchWinners, 'the match');
+                const label = winnerText || 'Match Over';
                 ctx.fillText(label, cx, cy - 40);
                 const readyCount = players.filter(p => p.readyForRematch).length;
                 ctx.fillStyle = 'white';

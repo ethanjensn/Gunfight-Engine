@@ -1,6 +1,5 @@
 package com.gunfight.engine;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -18,6 +17,7 @@ import com.gunfight.data.RoundStateComponent;
 import com.gunfight.data.ScoreComponent;
 import com.gunfight.data.SpawnPointComponent;
 import com.gunfight.data.StaticMapComponent;
+import com.gunfight.data.UsernameComponent;
 import com.gunfight.data.WeaponComponent;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
@@ -45,10 +45,10 @@ public class Room {
 
     // Legacy create for backwards compatibility (creates 1v1 room)
     public static Room create(GameServer server) {
-        return create(server, "1v1", List.of());
+        return create(server, "1v1", Map.of());
     }
 
-    public static Room create(GameServer server, String gameMode, List<WebSocket> initialPlayers) {
+    public static Room create(GameServer server, String gameMode, Map<WebSocket, String> playerUsernames) {
         int maxPlayers = PLAYERS_PER_MODE.getOrDefault(gameMode, 2);
         
         GameWorld world = new GameWorld();
@@ -79,8 +79,8 @@ public class Room {
         world.addComponent(RoundStateComponent.class, matchEntity, new RoundStateComponent());
 
         // Add initial players
-        for (WebSocket conn : initialPlayers) {
-            room.addPlayer(conn);
+        for (Map.Entry<WebSocket, String> entry : playerUsernames.entrySet()) {
+            room.addPlayer(entry.getKey(), entry.getValue());
         }
 
         loop.start();
@@ -88,6 +88,10 @@ public class Room {
     }
 
     public void addPlayer(WebSocket conn) {
+        addPlayer(conn, null);
+    }
+
+    public void addPlayer(WebSocket conn, String username) {
         if (nextSlot >= maxPlayers) return;
 
         int slot = nextSlot++;
@@ -122,6 +126,7 @@ public class Room {
         int entityId = world.createEntity();
 
         world.addComponent(PlayerSlotComponent.class, entityId, new PlayerSlotComponent(slot));
+        world.addComponent(UsernameComponent.class, entityId, new UsernameComponent(username));
         world.addComponent(SpawnPointComponent.class, entityId, new SpawnPointComponent(spawnX, spawnY));
         world.addComponent(PositionComponent.class, entityId, new PositionComponent(spawnX, spawnY));
         world.addComponent(HealthComponent.class, entityId, new HealthComponent(100));

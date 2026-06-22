@@ -10,6 +10,7 @@ import com.gunfight.data.PositionComponent;
 import com.gunfight.data.RespawnComponent;
 import com.gunfight.data.RoundStateComponent;
 import com.gunfight.data.RoundStateComponent.RoundPhase;
+import com.gunfight.data.PlayerSlotComponent;
 import com.gunfight.data.ScoreComponent;
 import com.gunfight.data.SpawnPointComponent;
 import com.gunfight.data.WeaponComponent;
@@ -59,46 +60,69 @@ public class RoundSystem {
         playerEntities.clear();
         playerEntities.addAll(players);
 
-        int deadCount = 0;
-        int survivorId = -1;
+        boolean team0Alive = false;
+        boolean team1Alive = false;
 
         for (int entityId : playerEntities) {
             RespawnComponent respawn = world.getComponent(RespawnComponent.class, entityId);
-            if (respawn != null) {
-                deadCount++;
-            } else {
-                survivorId = entityId;
-            }
+            if (respawn != null) continue; // dead
+
+            PlayerSlotComponent slot = world.getComponent(PlayerSlotComponent.class, entityId);
+            if (slot == null) continue;
+
+            if (slot.slot % 2 == 0) team0Alive = true;
+            else team1Alive = true;
         }
 
-        if (deadCount == 0) return;
+        // Both teams still have living players — round continues
+        if (team0Alive && team1Alive) return;
 
-        // Award point to survivor
-        if (survivorId != -1) {
-            ScoreComponent score = world.getComponent(ScoreComponent.class, survivorId);
-            if (score != null) score.wins++;
-        }
+        // One team is fully eliminated (or both, in a rare tie)
+        int winningTeam = team0Alive ? 0 : (team1Alive ? 1 : -1);
+        if (winningTeam == -1) return;
 
+        state.roundWinnerTeam = winningTeam;
         state.phase = RoundPhase.ROUND_OVER;
         state.phaseTimer = ROUND_OVER_PAUSE_TICKS;
+
+        // Award a win to every surviving player on the winning team
+        for (int entityId : playerEntities) {
+            RespawnComponent respawn = world.getComponent(RespawnComponent.class, entityId);
+            if (respawn != null) continue;
+
+            PlayerSlotComponent slot = world.getComponent(PlayerSlotComponent.class, entityId);
+            if (slot == null || slot.slot % 2 != winningTeam) continue;
+
+            ScoreComponent score = world.getComponent(ScoreComponent.class, entityId);
+            if (score != null) score.wins++;
+        }
     }
 
     private void handleRoundOver(GameWorld world, RoundStateComponent state) {
         state.phaseTimer--;
         if (state.phaseTimer > 0) return;
 
-        // Check if anyone has won the match
+        // Check if any team has won the match
         Set<Integer> players = world.getAllEntitiesWithComponent(ScoreComponent.class);
+        int matchWinnerTeam = -1;
         for (int entityId : players) {
             ScoreComponent score = world.getComponent(ScoreComponent.class, entityId);
-            if (score != null && score.wins >= WINS_TO_WIN_MATCH) {
-                state.phase = RoundPhase.MATCH_OVER;
-                return;
+            PlayerSlotComponent slot = world.getComponent(PlayerSlotComponent.class, entityId);
+            if (score != null && score.wins >= WINS_TO_WIN_MATCH && slot != null) {
+                matchWinnerTeam = slot.slot % 2;
+                break;
             }
+        }
+
+        if (matchWinnerTeam != -1) {
+            state.matchWinnerTeam = matchWinnerTeam;
+            state.phase = RoundPhase.MATCH_OVER;
+            return;
         }
 
         // No winner yet — start next round
         state.roundNumber++;
+        state.roundWinnerTeam = -1;
         startRound(world, state);
     }
 
@@ -122,10 +146,14 @@ public class RoundSystem {
         }
 
         state.roundNumber = 0;
+        state.roundWinnerTeam = -1;
+        state.matchWinnerTeam = -1;
         state.phase = RoundPhase.WAITING;
     }
 
     private void startRound(GameWorld world, RoundStateComponent state) {
+        state.roundWinnerTeam = -1;
+
         Set<Integer> players = world.getAllEntitiesWithComponent(ScoreComponent.class);
 
         for (int entityId : players) {

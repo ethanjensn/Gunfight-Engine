@@ -8,11 +8,11 @@ import java.nio.file.Path;
 public class WebServer {
     public static void start(int port, String directory) {
         HttpServer server = SimpleFileServer.createFileServer(
-            new InetSocketAddress(port),
+            new InetSocketAddress("0.0.0.0", port),
             Path.of(directory).toAbsolutePath(),
             SimpleFileServer.OutputLevel.VERBOSE
         );
         server.start();
-        System.out.println("Web server started at http://localhost:" + port);
+        System.out.println("Web server started at http://0.0.0.0:" + port);
     }
 }
