@@ -11,7 +11,8 @@
             flex-direction: column; 
             align-items: center; 
             justify-content: center;
-            min-height: 100vh;
+            height: 100vh; /* Fallback first */
+            height: 100svh; /* Modern unit overrides fallback if supported */
             overflow: hidden;
             background: #1a1a2e; 
             color: white; 
@@ -192,9 +193,15 @@
             .desktop-hint { display: none; }
             .mobile-hint { display: block; }
         }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: fit-content;
+        }
         #reloadBtn {
             margin-top: 10px;
-            margin-right: 10px;
+            margin-right: 0px;
             padding: 0.75rem 1.1rem;
             font-size: 1rem;
             font-weight: bold;
@@ -212,12 +219,22 @@
         @media (max-width: 768px) {
             #reloadBtn { display: block; }
         }
-        @media (max-height: 450px) and (orientation: landscape) {
+        @media (max-width: 950px) and (orientation: landscape) {
+            #gameScreen #info {
+                display: none;
+            }
             #reloadBtn {
-                padding: 0.45rem 0.75rem;
-                font-size: 0.85rem;
+                display: block; /* Force show on landscape mobile screens wider than 768px logical pixels */
+                padding: 0.35rem 0.7rem;
+                font-size: 0.8rem;
                 margin-top: 6px;
-                margin-right: 6px;
+                margin-bottom: 0px;
+                margin-right: 0px;
+                align-self: flex-end;
+            }
+            canvas {
+                max-height: calc(100vh - 85px) !important; /* Fallback for older browsers first */
+                max-height: calc(100svh - 85px) !important; /* Modern unit overrides fallback if supported */
             }
         }
         canvas {
@@ -328,8 +345,10 @@
             <p class="desktop-hint">Use WASD to move your circle. Green = you, Blue = teammate, Red = enemy.</p>
             <p class="mobile-hint">Left stick moves, right stick aims. Auto-fires when an enemy is visible. Tap Reload to reload. Green = you, Blue = teammate, Red = enemy.</p>
         </div>
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <button id="reloadBtn">Reload</button>
+        <div class="game-container">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            <button id="reloadBtn">Reload</button>
+        </div>
     </div>
 
     <script>
@@ -596,9 +615,10 @@
         }
 
         // Mobile touch joystick handling
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        window.addEventListener('touchstart', (e) => {
             if (currentState !== 'GAME') return;
+            if (e.target === reloadBtn) return;
+            e.preventDefault();
             usingTouch = true;
             const mid = window.innerWidth / 2;
             for (let i = 0; i < e.changedTouches.length; i++) {
@@ -622,9 +642,10 @@
             sendInput();
         }, { passive: false });
 
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
+        window.addEventListener('touchmove', (e) => {
             if (currentState !== 'GAME') return;
+            if (e.target === reloadBtn) return;
+            e.preventDefault();
             for (let i = 0; i < e.changedTouches.length; i++) {
                 const t = e.changedTouches[i];
                 if (t.identifier === touchState.leftId) {
@@ -640,7 +661,9 @@
             sendInput();
         }, { passive: false });
 
-        canvas.addEventListener('touchend', (e) => {
+        window.addEventListener('touchend', (e) => {
+            if (currentState !== 'GAME') return;
+            if (e.target === reloadBtn) return;
             e.preventDefault();
             for (let i = 0; i < e.changedTouches.length; i++) {
                 clearTouch(e.changedTouches[i].identifier);
@@ -650,7 +673,9 @@
             sendInput();
         }, { passive: false });
 
-        canvas.addEventListener('touchcancel', (e) => {
+        window.addEventListener('touchcancel', (e) => {
+            if (currentState !== 'GAME') return;
+            if (e.target === reloadBtn) return;
             e.preventDefault();
             for (let i = 0; i < e.changedTouches.length; i++) {
                 clearTouch(e.changedTouches[i].identifier);
