@@ -60,6 +60,26 @@ Then open `http://localhost:3000` in a browser, or connect from a mobile device 
 - Walls block both movement and line of sight
 - Coordinate with teammates to flank and control sightlines
 
+## Screenshots
+
+### Demo Video
+<img src="docs/visuals/video_demo.gif" alt="Demo Video" width="800">
+
+### Main Menu
+![Main Menu](docs/visuals/screenshot-main-page.png)
+
+### Queue Screen
+![Queue Screen](docs/visuals/screenshot-queue-page.png)
+
+### Gameplay - Map Overview
+![Map Overview](docs/visuals/screenshot-map-one-page.png)
+
+### Gameplay - Fog of War
+![Fog of War Vision System](docs/visuals/screenshot-map-fog-page.png)
+
+### Gameplay - Combat
+![Combat in Action](docs/visuals/screenshot-map-shooting.png)
+
 ## Known Limitations
 
 - **Single Server Instance** — No horizontal scaling; runs on one JVM
