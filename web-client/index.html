@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gunfight Matchmaking</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11,9 +12,11 @@
             align-items: center; 
             justify-content: center;
             min-height: 100vh;
+            overflow: hidden;
             background: #1a1a2e; 
             color: white; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
         }
         
         /* Main Menu Styles */
@@ -173,12 +176,60 @@
             display: none;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
         }
         #gameScreen #info {
             margin: 10px;
             text-align: center;
         }
-        canvas { border: 2px solid #444; background: #333; }
+        #gameScreen #info p {
+            margin: 4px 0;
+        }
+        .mobile-hint { display: none; }
+        @media (max-width: 768px) {
+            .desktop-hint { display: none; }
+            .mobile-hint { display: block; }
+        }
+        #reloadBtn {
+            margin-top: 10px;
+            margin-right: 10px;
+            padding: 0.75rem 1.1rem;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            background: #e94560;
+            color: white;
+            cursor: pointer;
+            display: none;
+            align-self: flex-end;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        @media (max-width: 768px) {
+            #reloadBtn { display: block; }
+        }
+        @media (max-height: 450px) and (orientation: landscape) {
+            #reloadBtn {
+                padding: 0.45rem 0.75rem;
+                font-size: 0.85rem;
+                margin-top: 6px;
+                margin-right: 6px;
+            }
+        }
+        canvas {
+            border: 2px solid #444;
+            background: #333;
+            max-width: 100vw;
+            max-height: calc(100vh - 200px);
+            width: auto;
+            height: auto;
+            display: block;
+            touch-action: none;
+        }
         
         /* Match Found Overlay */
         #matchFound {
@@ -274,9 +325,11 @@
     <div id="gameScreen">
         <div id="info">
             <h1>Gunfight Engine</h1>
-            <p>Use WASD to move your circle. Green = you, Blue = teammate, Red = enemy.</p>
+            <p class="desktop-hint">Use WASD to move your circle. Green = you, Blue = teammate, Red = enemy.</p>
+            <p class="mobile-hint">Left stick moves, right stick aims. Auto-fires when an enemy is visible. Tap Reload to reload. Green = you, Blue = teammate, Red = enemy.</p>
         </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <button id="reloadBtn">Reload</button>
     </div>
 
     <script>
@@ -287,6 +340,7 @@
         const matchFound = document.getElementById('matchFound');
         const usernameInput = document.getElementById('usernameInput');
         const rememberMeCheckbox = document.getElementById('rememberMe');
+        const reloadBtn = document.getElementById('reloadBtn');
         
         // Queue display elements
         const queueModeDisplay = document.getElementById('queueMode');
@@ -317,6 +371,63 @@
         const AMMO_BAR_HEIGHT = 4;
         const BAR_GAP = 2;
         const BAR_OFFSET_Y = 12;
+
+        // Mobile touch joystick state
+        const touchState = {
+            leftId: null,
+            rightId: null,
+            leftBaseX: 0, leftBaseY: 0,
+            leftCurrX: 0, leftCurrY: 0,
+            rightBaseX: 0, rightBaseY: 0,
+            rightCurrX: 0, rightCurrY: 0
+        };
+        const JOYSTICK_MAX_RADIUS = 50;
+        const JOYSTICK_DEAD_ZONE = 10;
+        const AIM_RADIUS = 400;
+
+        function screenToWorld(sx, sy) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = 800 / rect.width;
+            const scaleY = 600 / rect.height;
+            return {
+                x: (sx - rect.left) * scaleX,
+                y: (sy - rect.top) * scaleY
+            };
+        }
+
+        function updateKeysFromLeftStick() {
+            if (touchState.leftId === null) {
+                keys['w'] = false; keys['a'] = false; keys['s'] = false; keys['d'] = false;
+                return;
+            }
+            const dx = touchState.leftCurrX - touchState.leftBaseX;
+            const dy = touchState.leftCurrY - touchState.leftBaseY;
+            keys['w'] = dy < -JOYSTICK_DEAD_ZONE;
+            keys['s'] = dy > JOYSTICK_DEAD_ZONE;
+            keys['a'] = dx < -JOYSTICK_DEAD_ZONE;
+            keys['d'] = dx > JOYSTICK_DEAD_ZONE;
+        }
+
+        function updateAimFromRightStick() {
+            if (touchState.rightId === null) return;
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            if (!localPlayer) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = 800 / rect.width;
+            const scaleY = 600 / rect.height;
+            const dx = (touchState.rightCurrX - touchState.rightBaseX) * scaleX;
+            const dy = (touchState.rightCurrY - touchState.rightBaseY) * scaleY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < JOYSTICK_DEAD_ZONE) {
+                mouseX = localPlayer.x + PLAYER_RADIUS;
+                mouseY = localPlayer.y + PLAYER_RADIUS;
+                return;
+            }
+            const nx = dx / dist;
+            const ny = dy / dist;
+            mouseX = localPlayer.x + PLAYER_RADIUS + nx * AIM_RADIUS;
+            mouseY = localPlayer.y + PLAYER_RADIUS + ny * AIM_RADIUS;
+        }
 
         // Load saved username
         function loadSavedUsername() {
@@ -450,12 +561,14 @@
         let mouseX = 0;
         let mouseY = 0;
         let isMouseDown = false;
+        let usingTouch = false;
+        let lastIsFiringSent = false;
         
         canvas.addEventListener('mousemove', (e) => {
             if (currentState !== 'GAME') return;
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
+            const pos = screenToWorld(e.clientX, e.clientY);
+            mouseX = pos.x;
+            mouseY = pos.y;
             sendInput();
         });
         
@@ -469,6 +582,98 @@
             if (currentState !== 'GAME') return;
             isMouseDown = false;
             sendInput();
+        });
+
+        function clearTouch(identifier) {
+            if (touchState.leftId === identifier) {
+                touchState.leftId = null;
+                keys['w'] = false; keys['a'] = false; keys['s'] = false; keys['d'] = false;
+            }
+            if (touchState.rightId === identifier) {
+                touchState.rightId = null;
+                // Right stick is now look-only; firing is handled by auto-fire.
+            }
+        }
+
+        // Mobile touch joystick handling
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (currentState !== 'GAME') return;
+            usingTouch = true;
+            const mid = window.innerWidth / 2;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (touchState.leftId === null && t.clientX < mid) {
+                    touchState.leftId = t.identifier;
+                    touchState.leftBaseX = t.clientX;
+                    touchState.leftBaseY = t.clientY;
+                    touchState.leftCurrX = t.clientX;
+                    touchState.leftCurrY = t.clientY;
+                } else if (touchState.rightId === null) {
+                    touchState.rightId = t.identifier;
+                    touchState.rightBaseX = t.clientX;
+                    touchState.rightBaseY = t.clientY;
+                    touchState.rightCurrX = t.clientX;
+                    touchState.rightCurrY = t.clientY;
+                }
+            }
+            updateKeysFromLeftStick();
+            updateAimFromRightStick();
+            sendInput();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (currentState !== 'GAME') return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (t.identifier === touchState.leftId) {
+                    touchState.leftCurrX = t.clientX;
+                    touchState.leftCurrY = t.clientY;
+                } else if (t.identifier === touchState.rightId) {
+                    touchState.rightCurrX = t.clientX;
+                    touchState.rightCurrY = t.clientY;
+                }
+            }
+            updateKeysFromLeftStick();
+            updateAimFromRightStick();
+            sendInput();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                clearTouch(e.changedTouches[i].identifier);
+            }
+            updateKeysFromLeftStick();
+            updateAimFromRightStick();
+            sendInput();
+        }, { passive: false });
+
+        canvas.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                clearTouch(e.changedTouches[i].identifier);
+            }
+            updateKeysFromLeftStick();
+            updateAimFromRightStick();
+            sendInput();
+        }, { passive: false });
+
+        // Mobile reload button
+        function triggerReload() {
+            if (currentState !== 'GAME') return;
+            sendInput({ isReloading: true });
+        }
+
+        reloadBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            triggerReload();
+        }, { passive: false });
+
+        reloadBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerReload();
         });
         
         // WASD input handling
@@ -492,18 +697,20 @@
         function sendInput(overrides = {}) {
             if (currentState !== 'GAME') return;
             
+            const firing = isMouseDown || (usingTouch && anyEnemyVisible());
             const packet = {
                 type: 'gameInput',
                 moveUp: keys['w'] || false,
                 moveDown: keys['s'] || false,
                 moveLeft: keys['a'] || false,
                 moveRight: keys['d'] || false,
-                isFiring: isMouseDown,
+                isFiring: firing,
                 isReloading: keys['r'] || false,
                 cursorX: mouseX,
                 cursorY: mouseY,
                 ...overrides
             };
+            lastIsFiringSent = firing;
             socket.send(JSON.stringify(packet));
         }
 
@@ -530,6 +737,55 @@
             const localPlayer = players.find(p => p.id === localPlayerId);
             if (!localPlayer) return false;
             return player.slot % 2 === localPlayer.slot % 2;
+        }
+
+        function isOccluded(ox, oy, tx, ty, dist) {
+            if (dist < 0.001) return false;
+            const stepX = (tx - ox) / dist * 4;
+            const stepY = (ty - oy) / dist * 4;
+            const steps = Math.floor(dist / 4);
+            for (let s = 1; s < steps; s++) {
+                const rx = ox + stepX * s;
+                const ry = oy + stepY * s;
+                for (const wall of walls) {
+                    if (rx >= wall.x && rx <= wall.x + wall.w &&
+                        ry >= wall.y && ry <= wall.y + wall.h) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function isEnemyVisible(enemy) {
+            if (enemy.dead) return false;
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            if (!localPlayer || localPlayer.dead) return false;
+            const lx = localPlayer.x + PLAYER_RADIUS;
+            const ly = localPlayer.y + PLAYER_RADIUS;
+            const ex = enemy.x + PLAYER_RADIUS;
+            const ey = enemy.y + PLAYER_RADIUS;
+            const dx = ex - lx;
+            const dy = ey - ly;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > VISION_RANGE) return false;
+            const aimAngle = Math.atan2(mouseY - ly, mouseX - lx);
+            const half = (FOV_DEGREES * Math.PI) / 360;
+            let rel = Math.atan2(dy, dx) - aimAngle;
+            while (rel > Math.PI) rel -= 2 * Math.PI;
+            while (rel < -Math.PI) rel += 2 * Math.PI;
+            if (rel < -half || rel > half) return false;
+            return !isOccluded(lx, ly, ex, ey, dist);
+        }
+
+        function anyEnemyVisible() {
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            if (!localPlayer || localPlayer.dead) return false;
+            const enemies = players.filter(p => p.id !== localPlayerId && !isTeammate(p));
+            for (const enemy of enemies) {
+                if (isEnemyVisible(enemy)) return true;
+            }
+            return false;
         }
 
         function formatWinnerText(winners, suffix) {
@@ -705,6 +961,15 @@
             // Phase overlay
             drawOverlay();
 
+            // On-screen touch joysticks
+            drawJoysticks();
+
+            // Auto-fire for mobile: send a packet only when firing state changes
+            const firing = isMouseDown || (usingTouch && anyEnemyVisible());
+            if (firing !== lastIsFiringSent) {
+                sendInput();
+            }
+
             requestAnimationFrame(render);
         }
 
@@ -758,6 +1023,42 @@
                 ctx.font = '18px sans-serif';
                 ctx.fillText(readyCount + '/2 players ready', cx, cy + 42);
                 readySent = false;
+            }
+        }
+
+        function drawJoystick(base, curr, baseColor, stickColor) {
+            const dx = curr.x - base.x;
+            const dy = curr.y - base.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            let drawX = curr.x;
+            let drawY = curr.y;
+            if (dist > JOYSTICK_MAX_RADIUS) {
+                const angle = Math.atan2(dy, dx);
+                drawX = base.x + Math.cos(angle) * JOYSTICK_MAX_RADIUS;
+                drawY = base.y + Math.sin(angle) * JOYSTICK_MAX_RADIUS;
+            }
+            ctx.globalAlpha = 0.4;
+            ctx.fillStyle = baseColor;
+            ctx.beginPath();
+            ctx.arc(base.x, base.y, JOYSTICK_MAX_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = stickColor;
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawJoysticks() {
+            if (touchState.leftId !== null) {
+                const base = screenToWorld(touchState.leftBaseX, touchState.leftBaseY);
+                const curr = screenToWorld(touchState.leftCurrX, touchState.leftCurrY);
+                drawJoystick(base, curr, '#ffffff', '#00d4aa');
+            }
+            if (touchState.rightId !== null) {
+                const base = screenToWorld(touchState.rightBaseX, touchState.rightBaseY);
+                const curr = screenToWorld(touchState.rightCurrX, touchState.rightCurrY);
+                drawJoystick(base, curr, '#ffffff', '#e94560');
             }
         }
 
