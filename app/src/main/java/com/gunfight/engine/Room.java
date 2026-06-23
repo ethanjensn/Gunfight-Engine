@@ -6,6 +6,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.java_websocket.WebSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.JsonObject;
 import com.gunfight.data.HealthComponent;
@@ -23,6 +25,7 @@ import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
 
 public class Room {
+    private static final Logger log = LoggerFactory.getLogger(Room.class);
     private static final Map<String, Integer> PLAYERS_PER_MODE = Map.of(
         "1v1", 2,
         "2v2", 4,
@@ -137,7 +140,7 @@ public class Room {
 
         connectionToEntity.put(conn, entityId);
 
-        System.out.println("Player joined room — slot " + slot + ", entityId " + entityId);
+        log.info("Player joined room — slot {}, entityId {}", slot, entityId);
     }
     
     // Handle input from lobby - converts JSON to InputPacket and adds to queue
@@ -151,7 +154,7 @@ public class Room {
         if (entityId != null) {
             world.destroyEntity(entityId);
             nextSlot--;
-            System.out.println("Player left room — entityId " + entityId);
+            log.info("Player left room — entityId {}", entityId);
         }
     }
 
@@ -173,5 +176,10 @@ public class Room {
 
     public Map<WebSocket, Integer> getConnectionToEntity() {
         return connectionToEntity;
+    }
+
+    public void shutdown() {
+        log.info("Shutting down room");
+        loop.stop();
     }
 }

@@ -6,11 +6,14 @@ import com.gunfight.net.InputPacket;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.java_websocket.WebSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LobbyManager {
+    private static final Logger log = LoggerFactory.getLogger(LobbyManager.class);
     private final GameServer gameServer;
     private final QueueManager queueManager;
     private final RoomManager roomManager;
@@ -37,7 +40,7 @@ public class LobbyManager {
     public void onConnect(WebSocket connection) {
         LobbyPlayer player = new LobbyPlayer(connection);
         players.put(connection, player);
-        System.out.println("Player connected: " + connection.getRemoteSocketAddress());
+        log.info("Player connected: {}", connection.getRemoteSocketAddress());
         
         // Send initial state - client should show main menu
         sendState(connection, "MENU");
@@ -56,7 +59,7 @@ public class LobbyManager {
                 player.currentRoom.removePlayer(connection);
                 roomManager.onPlayerDisconnect(connection);
             }
-            System.out.println("Player disconnected: " + player.username);
+            log.info("Player disconnected: {}", player.username);
         }
     }
 
@@ -88,7 +91,7 @@ public class LobbyManager {
                     break;
             }
         } catch (Exception e) {
-            System.err.println("Failed to parse message: " + e.getMessage());
+            log.warn("Failed to parse message from {}", connection.getRemoteSocketAddress(), e);
         }
     }
 
@@ -96,7 +99,7 @@ public class LobbyManager {
         String username = packet.has("username") ? packet.get("username").getAsString() : null;
         if (username != null && !username.trim().isEmpty()) {
             player.username = username.trim();
-            System.out.println("Username set: " + player.username);
+            log.info("Username set: {}", player.username);
         }
     }
 
@@ -126,7 +129,7 @@ public class LobbyManager {
             
             // Send initial queue status
             sendQueueStatus(player);
-            System.out.println(player.username + " joined " + gameMode + " queue");
+            log.info("{} joined {} queue", player.username, gameMode);
         } else {
             sendError(player.connection, "Failed to join queue");
         }
@@ -143,7 +146,7 @@ public class LobbyManager {
         player.queueJoinTime = 0;
         
         sendState(player.connection, "MENU");
-        System.out.println(player.username + " cancelled queue");
+        log.info("{} cancelled queue", player.username);
     }
 
     private void handleGameInput(LobbyPlayer player, JsonObject packet) {
@@ -161,7 +164,7 @@ public class LobbyManager {
             inputPacket.setEntityId(entityId);
             gameServer.addGameInput(inputPacket);
         } catch (Exception e) {
-            System.err.println("Failed to parse game input: " + e.getMessage());
+            log.warn("Failed to parse game input from {}", player.connection.getRemoteSocketAddress(), e);
         }
     }
 

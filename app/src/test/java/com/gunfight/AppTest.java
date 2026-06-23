@@ -10,5 +10,6 @@ class AppTest {
     @Test void appHasAGreeting() {
         Main classUnderTest = new Main();
         assertNotNull(classUnderTest.getGreeting(), "app should have a greeting");
+        assertTrue(classUnderTest.getGreeting().contains("Gunfight"));
     }
 }

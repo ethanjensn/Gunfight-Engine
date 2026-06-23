@@ -14,5 +14,7 @@ public class Main {
 
         GameServer server = new GameServer(8080);
         server.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
     }
 }

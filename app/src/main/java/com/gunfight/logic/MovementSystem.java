@@ -7,8 +7,11 @@ import com.gunfight.data.InputComponent;
 import com.gunfight.data.RoundStateComponent;
 import com.gunfight.data.RoundStateComponent.RoundPhase;
 import com.gunfight.data.StaticMapComponent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MovementSystem {
+    private static final Logger log = LoggerFactory.getLogger(MovementSystem.class);
     private static final float MOVE_SPEED = 5.0f;
     private static final float CANVAS_WIDTH = 800f;
     private static final float CANVAS_HEIGHT = 600f;
@@ -42,8 +45,8 @@ public class MovementSystem {
                 // Push player out of any wall they overlap
                 resolveWallCollision(world, pos);
 
-                // Print position after movement
-                System.out.println("Entity " + entityId + " position: (" + pos.x + ", " + pos.y + ")");
+                // Trace position after movement
+                log.debug("Entity {} position: ({}, {})", entityId, pos.x, pos.y);
             }
         }
     }

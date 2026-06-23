@@ -7,8 +7,11 @@ import com.gunfight.data.RoundStateComponent.RoundPhase;
 import com.gunfight.data.WeaponComponent;
 import com.gunfight.data.InputComponent;
 import com.gunfight.data.PositionComponent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WeaponSystem {
+    private static final Logger log = LoggerFactory.getLogger(WeaponSystem.class);
     private static final float PROJECTILE_SPEED = 15.0f; // tiles per tick
     private static final int PROJECTILE_LIFETIME = 60;   // ticks (1 second at 60fps)
     
@@ -57,9 +60,9 @@ public class WeaponSystem {
                     );
                     
                     if (bulletId < 0) {
-                        System.out.println("Entity " + entityId + " fired but pool exhausted!");
+                        log.warn("Entity {} fired but projectile pool exhausted", entityId);
                     } else {
-                        System.out.println("Entity " + entityId + " fired! Ammo: " + weapon.ammo + " Bullet: " + bulletId);
+                        log.debug("Entity {} fired — ammo: {}, bullet: {}", entityId, weapon.ammo, bulletId);
                     }
                 }
             }

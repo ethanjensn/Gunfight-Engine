@@ -8,6 +8,8 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
+    // JMH benchmark plugin
+    alias libs.plugins.jmh
 }
 
 repositories {
@@ -18,6 +20,8 @@ repositories {
 dependencies {
     // Use JUnit Jupiter for testing.
     testImplementation libs.junit.jupiter
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
@@ -29,6 +33,15 @@ dependencies {
 
     // JSON parsing
     implementation 'com.google.code.gson:gson:2.10.1'
+
+    // Logging
+    implementation libs.slf4j.api
+    runtimeOnly libs.logback.classic
+
+    // JMH benchmarking
+    jmhImplementation libs.jmh.core
+    jmhImplementation libs.jmh.annotation
+    jmhImplementation sourceSets.main.output
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -46,4 +59,14 @@ application {
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+jmh {
+    warmupIterations = 3
+    iterations = 3
+    fork = 1
+    failOnError = true
 }

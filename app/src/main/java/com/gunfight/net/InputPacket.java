@@ -12,7 +12,7 @@ public class InputPacket {
     public boolean ready;
 
     // Internal ID used by the server, not sent by the browser
-    private int entityId;
+    private transient int entityId;
     
     // Getters and setters
     public int getEntityId() {

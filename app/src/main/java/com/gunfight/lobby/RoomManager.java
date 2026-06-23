@@ -6,8 +6,11 @@ import org.java_websocket.WebSocket;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RoomManager {
+    private static final Logger log = LoggerFactory.getLogger(RoomManager.class);
     private final Map<String, Room> rooms = new ConcurrentHashMap<>();
     private final Map<WebSocket, String> playerToRoom = new ConcurrentHashMap<>();
     private final GameServer gameServer;
@@ -46,16 +49,17 @@ public class RoomManager {
             playerToRoom.put(conn, roomId);
         }
 
-        System.out.println("Created " + gameMode + " room " + roomId + " with " + players.size() + " players");
+        log.info("Created {} room {} with {} players", gameMode, roomId, players.size());
         return room;
     }
 
     public void removeRoom(String roomId) {
         Room room = rooms.remove(roomId);
         if (room != null) {
+            room.shutdown();
             // Remove player mappings
             playerToRoom.values().removeIf(rid -> rid.equals(roomId));
-            System.out.println("Removed room " + roomId);
+            log.info("Removed room {}", roomId);
         }
     }
 

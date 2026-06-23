@@ -19,8 +19,14 @@ import com.gunfight.net.InputPacket;
 import java.util.Map;
 
 import org.java_websocket.WebSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.gunfight.metrics.GameMetrics;
+import com.gunfight.metrics.MetricsReporter;
 
 public class GameLoop implements Runnable {
+    private static final Logger log = LoggerFactory.getLogger(GameLoop.class);
     private boolean running = false;
     private int tickCount = 0;
     private GameWorld world;
@@ -36,6 +42,8 @@ public class GameLoop implements Runnable {
     private RoundSystem roundSystem = new RoundSystem();
     private VisionSystem visionSystem = new VisionSystem();
     private NetworkBroadcastSystem broadcastSystem;
+    private GameMetrics metrics = new GameMetrics();
+    private MetricsReporter metricsReporter = new MetricsReporter(metrics);
 
     // GameWorld — to access entities and components when running systems
     // Queue<InputPacket> — to grab network inputs each tick and apply them
@@ -51,7 +59,17 @@ public class GameLoop implements Runnable {
 
     public void start() {
         running = true;
-        new Thread(this).start();
+        metricsReporter.start();
+        new Thread(this, "GameLoop").start();
+    }
+
+    public void stop() {
+        running = false;
+        metricsReporter.stop();
+    }
+
+    public GameMetrics getMetrics() {
+        return metrics;
     }
 
     @Override
@@ -76,38 +94,45 @@ public class GameLoop implements Runnable {
 
     private void tick() {
         tickCount++;
+        long tickStart = System.nanoTime();
 
-        // process network inputs
-        inputSystem.processInputs(inputQueue, world);
+        try {
+            // process network inputs
+            inputSystem.processInputs(inputQueue, world);
 
-        // Apply movement
-        movementSystem.update(world);
+            // Apply movement
+            movementSystem.update(world);
 
-        // Process reload input
-        reloadSystem.update(world, tickCount);
+            // Process reload input
+            reloadSystem.update(world, tickCount);
 
-        // Process weapon firing
-        weaponSystem.update(world, tickCount);
+            // Process weapon firing
+            weaponSystem.update(world, tickCount);
 
-        // Update projectiles (move, check lifetime/bounds)
-        projectileSystem.update(world);
+            // Update projectiles (move, check lifetime/bounds)
+            projectileSystem.update(world);
 
-        // Check projectile-vs-player collisions
-        combatSystem.update(world);
+            // Check projectile-vs-player collisions
+            combatSystem.update(world);
 
-        // Check for deaths (health <= 0) — strips Input/Weapon, adds RespawnComponent
-        deathSystem.update(world);
+            // Check for deaths (health <= 0) — strips Input/Weapon, adds RespawnComponent
+            deathSystem.update(world);
 
-        // Handle round transitions, scoring, and respawns
-        roundSystem.update(world);
+            // Handle round transitions, scoring, and respawns
+            roundSystem.update(world);
 
-        // Compute per-player line-of-sight
-        visionSystem.update(world);
+            // Compute per-player line-of-sight
+            visionSystem.update(world);
 
-        // Broadcast world state to all clients
-        broadcastSystem.update(world, tickCount);
+            // Broadcast world state to all clients
+            long broadcastStart = System.nanoTime();
+            broadcastSystem.update(world, tickCount);
+            metrics.recordBroadcastNs(System.nanoTime() - broadcastStart);
+        } catch (Exception e) {
+            log.error("Exception during tick {}, continuing to next tick", tickCount, e);
+        }
 
-        // System.out.println("Tick: " + tickCount);
+        metrics.recordTickNs(System.nanoTime() - tickStart);
     }
     
     public int getTickCount() {

@@ -8,8 +8,11 @@ import java.util.Queue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Matchmaker {
+    private static final Logger log = LoggerFactory.getLogger(Matchmaker.class);
     private final QueueManager queueManager;
     private final RoomManager roomManager;
     private final LobbyManager lobbyManager;
@@ -25,12 +28,12 @@ public class Matchmaker {
 
     public void start() {
         executor.scheduleAtFixedRate(this::runMatchmaking, 1000, MATCHMAKING_INTERVAL_MS, TimeUnit.MILLISECONDS);
-        System.out.println("Matchmaker started");
+        log.info("Matchmaker started");
     }
 
     public void stop() {
         executor.shutdown();
-        System.out.println("Matchmaker stopped");
+        log.info("Matchmaker stopped");
     }
 
     private void runMatchmaking() {
@@ -43,8 +46,7 @@ public class Matchmaker {
             // Broadcast updated queue status to all waiting players
             lobbyManager.broadcastQueueStatus();
         } catch (Exception e) {
-            System.err.println("Matchmaking error: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Matchmaking error", e);
         }
     }
 
@@ -92,9 +94,9 @@ public class Matchmaker {
             try {
                 Room room = roomManager.createRoom(gameMode, matchedPlayers);
                 lobbyManager.onMatchFound(gameMode, matchedPlayers, room);
-                System.out.println("Created " + gameMode + " match with " + matchedPlayers.size() + " players");
+                log.info("Created {} match with {} players", gameMode, matchedPlayers.size());
             } catch (Exception e) {
-                System.err.println("Failed to create room: " + e.getMessage());
+                log.error("Failed to create room for {}", gameMode, e);
                 // Return players to queue
                 for (QueueEntry entry : matchedPlayers) {
                     queue.offer(entry);

@@ -7,11 +7,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.gunfight.lobby.LobbyManager;
 import com.google.gson.Gson;
 
 public class GameServer extends WebSocketServer {
+    private static final Logger log = LoggerFactory.getLogger(GameServer.class);
     // Mailbox for incoming game inputs - passed to ECS rooms
     private Queue<InputPacket> inputQueue = new ConcurrentLinkedQueue<>();
 
@@ -26,7 +29,7 @@ public class GameServer extends WebSocketServer {
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        System.out.println("New connection: " + conn.getRemoteSocketAddress());
+        log.info("New connection: {}", conn.getRemoteSocketAddress());
         lobbyManager.onConnect(conn);
     }
 
@@ -43,20 +46,31 @@ public class GameServer extends WebSocketServer {
 
     @Override
     public void onError(WebSocket conn, Exception ex) {
-        ex.printStackTrace();
+        if (conn != null) {
+            log.error("WebSocket error from {}", conn.getRemoteSocketAddress(), ex);
+        } else {
+            log.error("WebSocket server error", ex);
+        }
     }
 
     @Override
     public void onStart() {
-        System.out.println("Game server started on port " + getPort());
+        log.info("Game server started on port {}", getPort());
         // Initialize and start lobby manager
         this.lobbyManager = new LobbyManager(this);
         lobbyManager.start();
     }
     
     public void shutdown() {
+        log.info("Shutting down game server...");
         if (lobbyManager != null) {
             lobbyManager.stop();
+        }
+        try {
+            stop();
+            log.info("Game server shutdown complete");
+        } catch (Exception e) {
+            log.error("Error during game server shutdown", e);
         }
     }
 
