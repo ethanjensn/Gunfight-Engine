@@ -4,6 +4,10 @@
 # Build output
 build/
 app/build/
+bin/
+
+# Compiled Java classes
+*.class
 
 # OS / misc
 *.log
@@ -14,3 +18,12 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+
+# Ignore Kotlin plugin data
+.kotlin
+ENGINE_BUILDING_GUIDE.md

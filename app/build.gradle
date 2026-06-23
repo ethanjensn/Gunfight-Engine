@@ -8,6 +8,8 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
+    // JMH benchmark plugin
+    alias libs.plugins.jmh
 }
 
 repositories {
@@ -18,20 +20,28 @@ repositories {
 dependencies {
     // Use JUnit Jupiter for testing.
     testImplementation libs.junit.jupiter
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // This dependency is used by the application.
     implementation libs.guava
 
-    // LWJGL dependencies for window management and OpenGL
-    implementation platform('org.lwjgl:lwjgl-bom:3.3.3')
-    implementation 'org.lwjgl:lwjgl'
-    implementation 'org.lwjgl:lwjgl-glfw'
-    implementation 'org.lwjgl:lwjgl-opengl'
-    implementation 'org.lwjgl:lwjgl::natives-windows'
-    implementation 'org.lwjgl:lwjgl-glfw::natives-windows'
-    implementation 'org.lwjgl:lwjgl-opengl::natives-windows'
+    // WebSocket support
+    implementation 'org.java-websocket:Java-WebSocket:1.5.4'
+
+    // JSON parsing
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // Logging
+    implementation libs.slf4j.api
+    runtimeOnly libs.logback.classic
+
+    // JMH benchmarking
+    jmhImplementation libs.jmh.core
+    jmhImplementation libs.jmh.annotation
+    jmhImplementation sourceSets.main.output
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -43,10 +53,20 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = 'com.gunfight.game.GameMain'
+    mainClass = 'com.gunfight.Main'
 }
 
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+jmh {
+    warmupIterations = 3
+    iterations = 3
+    fork = 1
+    failOnError = true
 }

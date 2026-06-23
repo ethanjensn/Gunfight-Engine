@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gunfight Matchmaking</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            height: 100vh; /* Fallback first */
+            height: 100svh; /* Modern unit overrides fallback if supported */
+            overflow: hidden;
+            background: #1a1a2e; 
+            color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none;
+        }
+        
+        /* Main Menu Styles */
+        #mainMenu {
+            text-align: center;
+            padding: 40px;
+            background: #16213e;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 500px;
+            width: 90%;
+        }
+        #mainMenu h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #00d4aa 0%, #00a8e8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #mainMenu h2 {
+            font-size: 1.2em;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .username-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            background: #0f3460;
+            color: white;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .username-input:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+        .remember-me {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 30px;
+            color: #888;
+            font-size: 0.9em;
+        }
+        .remember-me input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #00d4aa;
+        }
+        .game-mode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .mode-btn {
+            padding: 18px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: linear-gradient(135deg, #e94560 0%, #c23a51 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .mode-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
+        }
+        .mode-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .mode-btn .players {
+            font-size: 0.7em;
+            opacity: 0.8;
+            font-weight: normal;
+        }
+        
+        /* Queue Screen Styles */
+        #queueScreen {
+            text-align: center;
+            padding: 40px;
+            background: #16213e;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 400px;
+            width: 90%;
+            display: none;
+        }
+        #queueScreen h2 {
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #00d4aa;
+        }
+        .queue-info {
+            background: #0f3460;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        .queue-stat {
+            margin: 15px 0;
+        }
+        .queue-stat .label {
+            font-size: 0.9em;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .queue-stat .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00a8e8;
+        }
+        .cancel-btn {
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border: 2px solid #e94560;
+            border-radius: 8px;
+            background: transparent;
+            color: #e94560;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cancel-btn:hover {
+            background: #e94560;
+            color: white;
+        }
+        .waiting-animation {
+            margin: 20px 0;
+        }
+        .dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00d4aa;
+            margin: 0 4px;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* Game Screen Styles */
+        #gameScreen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+        #gameScreen #info {
+            margin: 10px;
+            text-align: center;
+        }
+        #gameScreen #info p {
+            margin: 4px 0;
+        }
+        .mobile-hint { display: none; }
+        @media (max-width: 768px) {
+            .desktop-hint { display: none; }
+            .mobile-hint { display: block; }
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: fit-content;
+        }
+        #reloadBtn {
+            margin-top: 10px;
+            margin-right: 0px;
+            padding: 0.75rem 1.1rem;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            background: #e94560;
+            color: white;
+            cursor: pointer;
+            display: none;
+            align-self: flex-end;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        @media (max-width: 768px) {
+            #reloadBtn { display: block; }
+        }
+        @media (max-width: 950px) and (orientation: landscape) {
+            #gameScreen #info {
+                display: none;
+            }
+            #reloadBtn {
+                display: block; /* Force show on landscape mobile screens wider than 768px logical pixels */
+                padding: 0.35rem 0.7rem;
+                font-size: 0.8rem;
+                margin-top: 6px;
+                margin-bottom: 0px;
+                margin-right: 0px;
+                align-self: flex-end;
+            }
+            canvas {
+                max-height: calc(100vh - 85px) !important; /* Fallback for older browsers first */
+                max-height: calc(100svh - 85px) !important; /* Modern unit overrides fallback if supported */
+            }
+        }
+        canvas {
+            border: 2px solid #444;
+            background: #333;
+            max-width: 100vw;
+            max-height: calc(100vh - 200px);
+            width: auto;
+            height: auto;
+            display: block;
+            touch-action: none;
+        }
+        
+        /* Match Found Overlay */
+        #matchFound {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        #matchFound h2 {
+            font-size: 3em;
+            color: #00d4aa;
+            margin-bottom: 20px;
+        }
+        .countdown {
+            font-size: 5em;
+            font-weight: bold;
+            color: #e94560;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Menu -->
+    <div id="mainMenu">
+        <h1>GUNFIGHT</h1>
+        <h2>Tactical Team Shooter</h2>
+        
+        <input type="text" id="usernameInput" class="username-input" placeholder="Enter your username" maxlength="16">
+        
+        <label class="remember-me">
+            <input type="checkbox" id="rememberMe" checked>
+            Remember me
+        </label>
+        
+        <div class="game-mode-buttons">
+            <button class="mode-btn" id="btn1v1" onclick="joinQueue('1v1')">
+                1v1 Duel
+                <div class="players">1 vs 1</div>
+            </button>
+            <button class="mode-btn" id="btn2v2" onclick="joinQueue('2v2')">
+                2v2 Team Battle
+                <div class="players">2 vs 2</div>
+            </button>
+            <button class="mode-btn" id="btn3v3" onclick="joinQueue('3v3')">
+                3v3 Warfare
+                <div class="players">3 vs 3</div>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Queue Screen -->
+    <div id="queueScreen">
+        <h2>Finding Match...</h2>
+        
+        <div class="waiting-animation">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+        
+        <div class="queue-info">
+            <div class="queue-stat">
+                <div class="label">Game Mode</div>
+                <div class="value" id="queueMode">1v1</div>
+            </div>
+            <div class="queue-stat">
+                <div class="label">Queue Position</div>
+                <div class="value" id="queuePosition">-</div>
+            </div>
+            <div class="queue-stat">
+                <div class="label">Estimated Wait</div>
+                <div class="value" id="queueWait">-</div>
+            </div>
+            <div class="queue-stat">
+                <div class="label">Players in Queue</div>
+                <div class="value" id="queueSize">-</div>
+            </div>
+        </div>
+        
+        <button class="cancel-btn" onclick="cancelQueue()">Cancel</button>
+    </div>
+    
+    <!-- Match Found Overlay -->
+    <div id="matchFound">
+        <h2>Match Found!</h2>
+        <div class="countdown" id="matchCountdown">5</div>
+    </div>
+    
+    <!-- Game Screen -->
+    <div id="gameScreen">
+        <div id="info">
+            <h1>Gunfight Engine</h1>
+            <p class="desktop-hint">Use WASD to move your circle. Green = you, Blue = teammate, Red = enemy.</p>
+            <p class="mobile-hint">Left stick moves, right stick aims. Auto-fires when an enemy is visible. Tap Reload to reload. Green = you, Blue = teammate, Red = enemy.</p>
+        </div>
+        <div class="game-container">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            <button id="reloadBtn">Reload</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const mainMenu = document.getElementById('mainMenu');
+        const queueScreen = document.getElementById('queueScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const matchFound = document.getElementById('matchFound');
+        const usernameInput = document.getElementById('usernameInput');
+        const rememberMeCheckbox = document.getElementById('rememberMe');
+        const reloadBtn = document.getElementById('reloadBtn');
+        
+        // Queue display elements
+        const queueModeDisplay = document.getElementById('queueMode');
+        const queuePositionDisplay = document.getElementById('queuePosition');
+        const queueWaitDisplay = document.getElementById('queueWait');
+        const queueSizeDisplay = document.getElementById('queueSize');
+        
+        // Game state
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const socket = new WebSocket("ws://" + window.location.hostname + ":8080");
+        
+        let currentState = 'MENU'; // MENU, QUEUE, GAME
+        let localPlayerId = null;
+        let players = [];
+        let projectiles = [];
+        let walls = [];
+        let phase = 'WAITING';
+        let roundNumber = 0;
+        let roundWinners = [];
+        let matchWinners = [];
+        const keys = {};
+        const PLAYER_SIZE = 32;
+        const PLAYER_RADIUS = PLAYER_SIZE / 2;
+        const PROJECTILE_RADIUS = 4;
+        const BAR_WIDTH = 32;
+        const HEALTH_BAR_HEIGHT = 5;
+        const AMMO_BAR_HEIGHT = 4;
+        const BAR_GAP = 2;
+        const BAR_OFFSET_Y = 12;
+
+        // Mobile touch joystick state
+        const touchState = {
+            leftId: null,
+            rightId: null,
+            leftBaseX: 0, leftBaseY: 0,
+            leftCurrX: 0, leftCurrY: 0,
+            rightBaseX: 0, rightBaseY: 0,
+            rightCurrX: 0, rightCurrY: 0
+        };
+        const JOYSTICK_MAX_RADIUS = 50;
+        const JOYSTICK_DEAD_ZONE = 10;
+        const AIM_RADIUS = 400;
+
+        function screenToWorld(sx, sy) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = 800 / rect.width;
+            const scaleY = 600 / rect.height;
+            return {
+                x: (sx - rect.left) * scaleX,
+                y: (sy - rect.top) * scaleY
+            };
+        }
+
+        function updateKeysFromLeftStick() {
+            if (touchState.leftId === null) {
+                keys['w'] = false; keys['a'] = false; keys['s'] = false; keys['d'] = false;
+                return;
+            }
+            const dx = touchState.leftCurrX - touchState.leftBaseX;
+            const dy = touchState.leftCurrY - touchState.leftBaseY;
+            keys['w'] = dy < -JOYSTICK_DEAD_ZONE;
+            keys['s'] = dy > JOYSTICK_DEAD_ZONE;
+            keys['a'] = dx < -JOYSTICK_DEAD_ZONE;
+            keys['d'] = dx > JOYSTICK_DEAD_ZONE;
+        }
+
+        function updateAimFromRightStick() {
+            if (touchState.rightId === null) return;
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            if (!localPlayer) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = 800 / rect.width;
+            const scaleY = 600 / rect.height;
+            const dx = (touchState.rightCurrX - touchState.rightBaseX) * scaleX;
+            const dy = (touchState.rightCurrY - touchState.rightBaseY) * scaleY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < JOYSTICK_DEAD_ZONE) {
+                mouseX = localPlayer.x + PLAYER_RADIUS;
+                mouseY = localPlayer.y + PLAYER_RADIUS;
+                return;
+            }
+            const nx = dx / dist;
+            const ny = dy / dist;
+            mouseX = localPlayer.x + PLAYER_RADIUS + nx * AIM_RADIUS;
+            mouseY = localPlayer.y + PLAYER_RADIUS + ny * AIM_RADIUS;
+        }
+
+        // Load saved username
+        function loadSavedUsername() {
+            const savedUsername = localStorage.getItem('gunfight_username');
+            const savedRemember = localStorage.getItem('gunfight_remember');
+            
+            if (savedUsername && savedRemember === 'true') {
+                usernameInput.value = savedUsername;
+                rememberMeCheckbox.checked = true;
+            }
+        }
+        
+        // Save username
+        function saveUsername() {
+            const username = usernameInput.value.trim();
+            const remember = rememberMeCheckbox.checked;
+            
+            if (remember && username) {
+                localStorage.setItem('gunfight_username', username);
+                localStorage.setItem('gunfight_remember', 'true');
+            } else {
+                localStorage.removeItem('gunfight_username');
+                localStorage.setItem('gunfight_remember', 'false');
+            }
+            
+            return username;
+        }
+        
+        // State switching
+        function showState(state) {
+            currentState = state;
+            mainMenu.style.display = state === 'MENU' ? 'block' : 'none';
+            queueScreen.style.display = state === 'QUEUE' ? 'block' : 'none';
+            gameScreen.style.display = state === 'GAME' ? 'flex' : 'none';
+            
+            if (state === 'GAME') {
+                // Start rendering game
+                requestAnimationFrame(render);
+            }
+        }
+        
+        // Join queue
+        function joinQueue(gameMode) {
+            const username = saveUsername();
+            
+            if (!username) {
+                usernameInput.focus();
+                usernameInput.style.borderColor = '#e94560';
+                setTimeout(() => usernameInput.style.borderColor = '', 1000);
+                return;
+            }
+            
+            // Send set username first
+            socket.send(JSON.stringify({ type: 'setUsername', username: username }));
+            
+            // Then join queue
+            socket.send(JSON.stringify({ type: 'joinQueue', gameMode: gameMode }));
+            
+            // Update queue display
+            queueModeDisplay.textContent = gameMode;
+            showState('QUEUE');
+        }
+        
+        // Cancel queue
+        function cancelQueue() {
+            socket.send(JSON.stringify({ type: 'cancelQueue' }));
+            showState('MENU');
+        }
+        
+        // Show match found
+        function showMatchFound() {
+            matchFound.style.display = 'flex';
+            let count = 5;
+            document.getElementById('matchCountdown').textContent = count;
+            
+            const countdown = setInterval(() => {
+                count--;
+                document.getElementById('matchCountdown').textContent = count;
+                if (count <= 0) {
+                    clearInterval(countdown);
+                    matchFound.style.display = 'none';
+                }
+            }, 1000);
+        }
+
+        socket.onopen = () => {
+            console.log("Connected to server!");
+            loadSavedUsername();
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            // Handle lobby/queue messages
+            if (data.type === 'queueStatus') {
+                queuePositionDisplay.textContent = data.position;
+                queueWaitDisplay.textContent = data.estimatedSeconds + 's';
+                queueSizeDisplay.textContent = data.queueSize;
+            }
+            else if (data.type === 'gameStart') {
+                showMatchFound();
+                setTimeout(() => {
+                    showState('GAME');
+                }, 5000);
+            }
+            else if (data.type === 'state' && data.state === 'MENU') {
+                showState('MENU');
+            }
+            else if (data.type === 'error') {
+                console.error('Server error:', data.message);
+                alert('Error: ' + data.message);
+            }
+            // Handle game messages (existing ECS protocol)
+            else if (data.players) {
+                players = data.players;
+                if (localPlayerId === null && players.length > 0) {
+                    localPlayerId = players[0].id;
+                }
+            }
+            if (data.projectiles) {
+                projectiles = data.projectiles;
+            }
+            if (data.walls) walls = data.walls;
+            if (data.phase) phase = data.phase;
+            if (data.roundNumber !== undefined) roundNumber = data.roundNumber;
+            if (data.roundWinners) roundWinners = data.roundWinners;
+            if (data.matchWinners) matchWinners = data.matchWinners;
+        };
+
+        // Mouse tracking for aiming (only active in game)
+        let mouseX = 0;
+        let mouseY = 0;
+        let isMouseDown = false;
+        let usingTouch = false;
+        let lastIsFiringSent = false;
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (currentState !== 'GAME') return;
+            const pos = screenToWorld(e.clientX, e.clientY);
+            mouseX = pos.x;
+            mouseY = pos.y;
+            sendInput();
+        });
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (currentState !== 'GAME') return;
+            isMouseDown = true;
+            sendInput();
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            if (currentState !== 'GAME') return;
+            isMouseDown = false;
+            sendInput();
+        });
+
+        function clearTouch(identifier) {
+            if (touchState.leftId === identifier) {
+                touchState.leftId = null;
+                keys['w'] = false; keys['a'] = false; keys['s'] = false; keys['d'] = false;
+            }
+            if (touchState.rightId === identifier) {
+                touchState.rightId = null;
+                // Right stick is now look-only; firing is handled by auto-fire.
+            }
+        }
+
+        // Mobile touch joystick handling
+        window.addEventListener('touchstart', (e) => {
+            if (currentState !== 'GAME') return;
+            if (e.target === reloadBtn) return;
+            e.preventDefault();
+            usingTouch = true;
+            const mid = window.innerWidth / 2;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (touchState.leftId === null && t.clientX < mid) {
+                    touchState.leftId = t.identifier;
+                    touchState.leftBaseX = t.clientX;
+                    touchState.leftBaseY = t.clientY;
+                    touchState.leftCurrX = t.clientX;
+                    touchState.leftCurrY = t.clientY;
+                } else if (touchState.rightId === null) {
+                    touchState.rightId = t.identifier;
+                    touchState.rightBaseX = t.clientX;
+                    touchState.rightBaseY = t.clientY;
+                    touchState.rightCurrX = t.clientX;
+                    touchState.rightCurrY = t.clientY;
+                }
+            }
+            updateKeysFromLeftStick();
+            updateAimFromRightStick();
+            sendInput();
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (currentState !== 'GAME') return;
+            if (e.target === reloadBtn) return;
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (t.identifier === touchState.leftId) {
+                    touchState.leftCurrX = t.clientX;
+                    touchState.leftCurrY = t.clientY;
+                } else if (t.identifier === touchState.rightId) {
+                    touchState.rightCurrX = t.clientX;
+                    touchState.rightCurrY = t.clientY;
+                }
+            }
+            updateKeysFromLeftStick();
+            updateAimFromRightStick();
+            sendInput();
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            if (currentState !== 'GAME') return;
+            if (e.target === reloadBtn) return;
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                clearTouch(e.changedTouches[i].identifier);
+            }
+            updateKeysFromLeftStick();
+            updateAimFromRightStick();
+            sendInput();
+        }, { passive: false });
+
+        window.addEventListener('touchcancel', (e) => {
+            if (currentState !== 'GAME') return;
+            if (e.target === reloadBtn) return;
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                clearTouch(e.changedTouches[i].identifier);
+            }
+            updateKeysFromLeftStick();
+            updateAimFromRightStick();
+            sendInput();
+        }, { passive: false });
+
+        // Mobile reload button
+        function triggerReload() {
+            if (currentState !== 'GAME') return;
+            sendInput({ isReloading: true });
+        }
+
+        reloadBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            triggerReload();
+        }, { passive: false });
+
+        reloadBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerReload();
+        });
+        
+        // WASD input handling
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            keys[e.key] = true;
+            if (currentState === 'GAME') {
+                sendInput();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+            if (currentState === 'GAME') {
+                sendInput();
+            }
+        });
+
+        let readySent = false;
+
+        function sendInput(overrides = {}) {
+            if (currentState !== 'GAME') return;
+            
+            const firing = isMouseDown || (usingTouch && anyEnemyVisible());
+            const packet = {
+                type: 'gameInput',
+                moveUp: keys['w'] || false,
+                moveDown: keys['s'] || false,
+                moveLeft: keys['a'] || false,
+                moveRight: keys['d'] || false,
+                isFiring: firing,
+                isReloading: keys['r'] || false,
+                cursorX: mouseX,
+                cursorY: mouseY,
+                ...overrides
+            };
+            lastIsFiringSent = firing;
+            socket.send(JSON.stringify(packet));
+        }
+
+        function sendReady() {
+            if (!readySent) {
+                readySent = true;
+                sendInput({ ready: true });
+            }
+        }
+
+        const FOV_DEGREES = 90;
+        const VISION_RANGE = 400;
+
+        function getPlayerColor(player) {
+            if (player.id === localPlayerId) return '#00ff00'; // Green - local player
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            const localTeam = localPlayer ? localPlayer.slot % 2 : -1;
+            const playerTeam = player.slot % 2;
+            if (localTeam === playerTeam) return '#0088ff'; // Blue - teammate
+            return '#ff4444'; // Red - enemy
+        }
+
+        function isTeammate(player) {
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            if (!localPlayer) return false;
+            return player.slot % 2 === localPlayer.slot % 2;
+        }
+
+        function isOccluded(ox, oy, tx, ty, dist) {
+            if (dist < 0.001) return false;
+            const stepX = (tx - ox) / dist * 4;
+            const stepY = (ty - oy) / dist * 4;
+            const steps = Math.floor(dist / 4);
+            for (let s = 1; s < steps; s++) {
+                const rx = ox + stepX * s;
+                const ry = oy + stepY * s;
+                for (const wall of walls) {
+                    if (rx >= wall.x && rx <= wall.x + wall.w &&
+                        ry >= wall.y && ry <= wall.y + wall.h) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function isEnemyVisible(enemy) {
+            if (enemy.dead) return false;
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            if (!localPlayer || localPlayer.dead) return false;
+            const lx = localPlayer.x + PLAYER_RADIUS;
+            const ly = localPlayer.y + PLAYER_RADIUS;
+            const ex = enemy.x + PLAYER_RADIUS;
+            const ey = enemy.y + PLAYER_RADIUS;
+            const dx = ex - lx;
+            const dy = ey - ly;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > VISION_RANGE) return false;
+            const aimAngle = Math.atan2(mouseY - ly, mouseX - lx);
+            const half = (FOV_DEGREES * Math.PI) / 360;
+            let rel = Math.atan2(dy, dx) - aimAngle;
+            while (rel > Math.PI) rel -= 2 * Math.PI;
+            while (rel < -Math.PI) rel += 2 * Math.PI;
+            if (rel < -half || rel > half) return false;
+            return !isOccluded(lx, ly, ex, ey, dist);
+        }
+
+        function anyEnemyVisible() {
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            if (!localPlayer || localPlayer.dead) return false;
+            const enemies = players.filter(p => p.id !== localPlayerId && !isTeammate(p));
+            for (const enemy of enemies) {
+                if (isEnemyVisible(enemy)) return true;
+            }
+            return false;
+        }
+
+        function formatWinnerText(winners, suffix) {
+            if (!winners || winners.length === 0) return null;
+            const names = winners.join(' & ');
+            const verb = winners.length === 1 ? 'wins' : 'win';
+            return names + ' ' + verb + ' ' + suffix + '!';
+        }
+
+        function raySegmentIntersect(ox, oy, dx, dy, x1, y1, x2, y2) {
+            const ex = x2 - x1, ey = y2 - y1;
+            const denom = dx * ey - dy * ex;
+            if (Math.abs(denom) < 1e-8) return null;
+            const t = ((x1 - ox) * ey - (y1 - oy) * ex) / denom;
+            const u = ((x1 - ox) * dy - (y1 - oy) * dx) / denom;
+            if (t > 0 && u >= 0 && u <= 1) return t;
+            return null;
+        }
+
+        function castRay(ox, oy, angle) {
+            const dx = Math.cos(angle), dy = Math.sin(angle);
+            let minT = VISION_RANGE;
+            for (const wall of walls) {
+                const segs = [
+                    [wall.x,         wall.y,          wall.x+wall.w, wall.y        ],
+                    [wall.x+wall.w,  wall.y,          wall.x+wall.w, wall.y+wall.h ],
+                    [wall.x+wall.w,  wall.y+wall.h,   wall.x,        wall.y+wall.h ],
+                    [wall.x,         wall.y+wall.h,   wall.x,        wall.y        ]
+                ];
+                for (const [x1,y1,x2,y2] of segs) {
+                    const t = raySegmentIntersect(ox, oy, dx, dy, x1, y1, x2, y2);
+                    if (t !== null && t < minT) minT = t;
+                }
+            }
+            return { x: ox + dx * minT, y: oy + dy * minT };
+        }
+
+        function buildVisibilityPolygon(ox, oy, aimAngle) {
+            const half = (FOV_DEGREES * Math.PI) / 360;
+            const startAngle = aimAngle - half;
+            const endAngle   = aimAngle + half;
+            const angles = [startAngle, endAngle];
+            for (const wall of walls) {
+                for (const [cx, cy] of [
+                    [wall.x,         wall.y        ],
+                    [wall.x+wall.w,  wall.y        ],
+                    [wall.x+wall.w,  wall.y+wall.h ],
+                    [wall.x,         wall.y+wall.h ]
+                ]) {
+                    let rel = Math.atan2(cy - oy, cx - ox) - aimAngle;
+                    while (rel >  Math.PI) rel -= 2 * Math.PI;
+                    while (rel < -Math.PI) rel += 2 * Math.PI;
+                    if (rel >= -half && rel <= half) {
+                        const a = aimAngle + rel;
+                        angles.push(a - 0.0001, a, a + 0.0001);
+                    }
+                }
+            }
+            angles.sort((a, b) => a - b);
+            const pts = [];
+            for (const a of angles) {
+                const clamped = Math.max(startAngle, Math.min(endAngle, a));
+                pts.push(castRay(ox, oy, clamped));
+            }
+            return pts;
+        }
+
+        function applyVisibilityClip(ox, oy, aimAngle) {
+            const pts = buildVisibilityPolygon(ox, oy, aimAngle);
+            ctx.beginPath();
+            ctx.moveTo(ox, oy);
+            for (const p of pts) ctx.lineTo(p.x, p.y);
+            ctx.closePath();
+            ctx.clip();
+        }
+
+        function drawPlayer(player) {
+            if (player.dead) return;
+            const cx = player.x + PLAYER_RADIUS;
+            const cy = player.y + PLAYER_RADIUS;
+
+            ctx.fillStyle = getPlayerColor(player);
+            ctx.beginPath();
+            ctx.arc(cx, cy, PLAYER_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+
+            const barX = cx - BAR_WIDTH / 2;
+            const healthBarY = player.y - BAR_OFFSET_Y - HEALTH_BAR_HEIGHT - BAR_GAP - AMMO_BAR_HEIGHT;
+
+            if (player.maxHealth > 0) {
+                const hpRatio = Math.max(0, player.health / player.maxHealth);
+                ctx.fillStyle = '#555';
+                ctx.fillRect(barX, healthBarY, BAR_WIDTH, HEALTH_BAR_HEIGHT);
+                ctx.fillStyle = hpRatio > 0.5 ? '#44ff44' : hpRatio > 0.25 ? '#ffcc00' : '#ff4444';
+                ctx.fillRect(barX, healthBarY, BAR_WIDTH * hpRatio, HEALTH_BAR_HEIGHT);
+            }
+
+            if (player.maxAmmo > 0) {
+                const ammoBarY = healthBarY + HEALTH_BAR_HEIGHT + BAR_GAP;
+                const ammoRatio = player.ammo / player.maxAmmo;
+                const ratio = player.reloading
+                    ? ammoRatio + (1 - ammoRatio) * (player.reloadProgress || 0)
+                    : ammoRatio;
+                ctx.fillStyle = '#555';
+                ctx.fillRect(barX, ammoBarY, BAR_WIDTH, AMMO_BAR_HEIGHT);
+                ctx.fillStyle = ratio > 0.5 ? '#44ff44' : ratio > 0.25 ? '#ffcc00' : '#ff4444';
+                ctx.fillRect(barX, ammoBarY, BAR_WIDTH * ratio, AMMO_BAR_HEIGHT);
+            }
+
+            if (player.username) {
+                const nameY = player.y - BAR_OFFSET_Y - HEALTH_BAR_HEIGHT - BAR_GAP - AMMO_BAR_HEIGHT - 6;
+                ctx.font = 'bold 13px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+                ctx.textAlign = 'center';
+                const width = ctx.measureText(player.username).width;
+                const pad = 2;
+                const ascent = 11;
+                const descent = 3;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.beginPath();
+                ctx.roundRect(cx - width / 2 - pad, nameY - ascent - pad, width + pad * 2, ascent + descent + pad * 2, 3);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.fillText(player.username, cx, nameY);
+            }
+        }
+
+        function render() {
+            // Clear canvas
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw walls (always fully visible)
+            ctx.fillStyle = '#888888';
+            ctx.strokeStyle = '#555555';
+            ctx.lineWidth = 2;
+            for (const wall of walls) {
+                ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+                ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+            }
+
+            // Draw projectiles (always visible)
+            ctx.fillStyle = '#ffff00';
+            for (const projectile of projectiles) {
+                ctx.beginPath();
+                ctx.arc(projectile.x, projectile.y, PROJECTILE_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const localPlayer = players.find(p => p.id === localPlayerId);
+            const otherPlayers = players.filter(p => p.id !== localPlayerId);
+            const teammates = otherPlayers.filter(isTeammate);
+            const enemies = otherPlayers.filter(p => !isTeammate(p));
+
+            // Teammates are always drawn (no FOV clip)
+            for (const player of teammates) drawPlayer(player);
+
+            // Enemies are only visible inside the FOV cone
+            if (localPlayer && !localPlayer.dead && enemies.length > 0) {
+                const lx = localPlayer.x + PLAYER_RADIUS;
+                const ly = localPlayer.y + PLAYER_RADIUS;
+                const aimAngle = Math.atan2(mouseY - ly, mouseX - lx);
+                ctx.save();
+                applyVisibilityClip(lx, ly, aimAngle);
+                for (const player of enemies) drawPlayer(player);
+                ctx.restore();
+            } else {
+                for (const player of enemies) drawPlayer(player);
+            }
+
+            // Local player always drawn fully (no clip)
+            if (localPlayer) drawPlayer(localPlayer);
+
+            // Phase overlay
+            drawOverlay();
+
+            // On-screen touch joysticks
+            drawJoysticks();
+
+            // Auto-fire for mobile: send a packet only when firing state changes
+            const firing = isMouseDown || (usingTouch && anyEnemyVisible());
+            if (firing !== lastIsFiringSent) {
+                sendInput();
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        function drawOverlay() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            if (phase === 'WAITING') {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 36px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Waiting for players...', cx, cy);
+            } else if (phase === 'ROUND_OVER') {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 40px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Round ' + (roundNumber + 1) + ' Over', cx, cy - 40);
+                ctx.font = '22px sans-serif';
+                const winnerText = formatWinnerText(roundWinners, 'the round');
+                if (winnerText) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillText(winnerText, cx, cy);
+                    ctx.fillStyle = 'white';
+                    ctx.fillText('Next round starting...', cx, cy + 40);
+                } else {
+                    ctx.fillText('Next round starting...', cx, cy);
+                }
+            } else if (phase === 'IN_ROUND' && roundNumber > 0) {
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.font = 'bold 18px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('Round ' + (roundNumber + 1), 12, 24);
+            } else if (phase === 'MATCH_OVER') {
+                ctx.fillStyle = 'rgba(0,0,0,0.65)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 48px sans-serif';
+                ctx.textAlign = 'center';
+                const winnerText = formatWinnerText(matchWinners, 'the match');
+                const label = winnerText || 'Match Over';
+                ctx.fillText(label, cx, cy - 40);
+                const readyCount = players.filter(p => p.readyForRematch).length;
+                ctx.fillStyle = 'white';
+                ctx.font = '22px sans-serif';
+                ctx.fillText('Press SPACE to play again', cx, cy + 10);
+                ctx.fillStyle = readyCount > 0 ? '#44ff44' : '#aaaaaa';
+                ctx.font = '18px sans-serif';
+                ctx.fillText(readyCount + '/2 players ready', cx, cy + 42);
+                readySent = false;
+            }
+        }
+
+        function drawJoystick(base, curr, baseColor, stickColor) {
+            const dx = curr.x - base.x;
+            const dy = curr.y - base.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            let drawX = curr.x;
+            let drawY = curr.y;
+            if (dist > JOYSTICK_MAX_RADIUS) {
+                const angle = Math.atan2(dy, dx);
+                drawX = base.x + Math.cos(angle) * JOYSTICK_MAX_RADIUS;
+                drawY = base.y + Math.sin(angle) * JOYSTICK_MAX_RADIUS;
+            }
+            ctx.globalAlpha = 0.4;
+            ctx.fillStyle = baseColor;
+            ctx.beginPath();
+            ctx.arc(base.x, base.y, JOYSTICK_MAX_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = stickColor;
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawJoysticks() {
+            if (touchState.leftId !== null) {
+                const base = screenToWorld(touchState.leftBaseX, touchState.leftBaseY);
+                const curr = screenToWorld(touchState.leftCurrX, touchState.leftCurrY);
+                drawJoystick(base, curr, '#ffffff', '#00d4aa');
+            }
+            if (touchState.rightId !== null) {
+                const base = screenToWorld(touchState.rightBaseX, touchState.rightBaseY);
+                const curr = screenToWorld(touchState.rightCurrX, touchState.rightCurrY);
+                drawJoystick(base, curr, '#ffffff', '#e94560');
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && phase === 'MATCH_OVER') {
+                sendReady();
+            }
+        });
+
+        // Start in menu
+        showState('MENU');
+    </script>
+</body>
+</html>
