@@ -86,6 +86,9 @@ public class LobbyManager {
                     // Forward to room if in game
                     handleGameInput(player, packet);
                     break;
+                case "ping":
+                    handlePing(player, packet);
+                    break;
                 default:
                     // Unknown message type
                     break;
@@ -93,6 +96,14 @@ public class LobbyManager {
         } catch (Exception e) {
             log.warn("Failed to parse message from {}", connection.getRemoteSocketAddress(), e);
         }
+    }
+
+    private void handlePing(LobbyPlayer player, JsonObject packet) {
+        long clientTime = packet.has("t") ? packet.get("t").getAsLong() : 0L;
+        JsonObject pong = new JsonObject();
+        pong.addProperty("type", "pong");
+        pong.addProperty("t", clientTime);
+        player.connection.send(gson.toJson(pong));
     }
 
     private void handleSetUsername(LobbyPlayer player, JsonObject packet) {

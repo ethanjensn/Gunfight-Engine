@@ -23,11 +23,13 @@ import com.gunfight.net.GameStatePacket;
 import com.gunfight.net.GameStatePacket.PlayerState;
 import com.gunfight.net.GameStatePacket.ProjectileState;
 import com.gunfight.net.GameStatePacket.WallState;
+import com.gunfight.metrics.GameMetrics;
 import com.gunfight.data.StaticMapComponent;
 import com.google.gson.Gson;
 
 public class NetworkBroadcastSystem {
     private final Map<WebSocket, Integer> connectionToEntity;
+    private final GameMetrics metrics;
     private Gson gson = new Gson();
 
     // Object pool: pre-allocated PlayerState objects that get reused
@@ -50,8 +52,9 @@ public class NetworkBroadcastSystem {
     // Permanent packet — Gson reads from filteredStates per client
     private final GameStatePacket packet = new GameStatePacket(filteredStates, activeProjectiles, activeWalls);
 
-    public NetworkBroadcastSystem(GameServer server, Map<WebSocket, Integer> connectionToEntity) {
+    public NetworkBroadcastSystem(GameServer server, Map<WebSocket, Integer> connectionToEntity, GameMetrics metrics) {
         this.connectionToEntity = connectionToEntity;
+        this.metrics = metrics;
     }
 
     public void update(GameWorld world, int currentTick) {
@@ -210,9 +213,16 @@ public class NetworkBroadcastSystem {
                 }
             }
 
+            long serializeStart = System.nanoTime();
             String json = gson.toJson(packet);
+            if (metrics != null) {
+                metrics.recordSerializationNs(System.nanoTime() - serializeStart);
+            }
             if (conn.isOpen()) {
                 conn.send(json);
+                if (metrics != null) {
+                    metrics.recordPacket(json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+                }
             }
         }
     }

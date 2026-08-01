@@ -532,14 +532,29 @@
             }, 1000);
         }
 
+        let lastPingSent = 0;
+        let currentLatency = 0;
+
         socket.onopen = () => {
             console.log("Connected to server!");
             loadSavedUsername();
+            // Measure end-to-end WebSocket latency every 2 seconds
+            setInterval(() => {
+                if (socket.readyState === WebSocket.OPEN) {
+                    lastPingSent = Date.now();
+                    socket.send(JSON.stringify({ type: 'ping', t: lastPingSent }));
+                }
+            }, 2000);
         };
 
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            
+
+            if (data.type === 'pong' && data.t === lastPingSent) {
+                currentLatency = Date.now() - data.t;
+                console.log('RTT:', currentLatency, 'ms');
+            }
+
             // Handle lobby/queue messages
             if (data.type === 'queueStatus') {
                 queuePositionDisplay.textContent = data.position;

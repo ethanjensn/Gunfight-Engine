@@ -21,6 +21,7 @@ import com.gunfight.data.SpawnPointComponent;
 import com.gunfight.data.StaticMapComponent;
 import com.gunfight.data.UsernameComponent;
 import com.gunfight.data.WeaponComponent;
+import com.gunfight.metrics.GameMetrics;
 import com.gunfight.net.GameServer;
 import com.gunfight.net.InputPacket;
 
@@ -172,6 +173,10 @@ public class Room {
 
     public GameWorld getWorld() {
         return world;
+    }
+
+    public GameMetrics getMetrics() {
+        return loop.getMetrics();
     }
 
     public Map<WebSocket, Integer> getConnectionToEntity() {

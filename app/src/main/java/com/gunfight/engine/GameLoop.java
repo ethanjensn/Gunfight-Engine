@@ -54,7 +54,7 @@ public class GameLoop implements Runnable {
         this.weaponSystem = new WeaponSystem(projectilePool);
         this.projectileSystem = new ProjectileSystem(projectilePool);
         this.combatSystem = new CombatSystem(projectilePool);
-        this.broadcastSystem = new NetworkBroadcastSystem(server, connectionToEntity);
+        this.broadcastSystem = new NetworkBroadcastSystem(server, connectionToEntity, metrics);
     }
 
     public void start() {

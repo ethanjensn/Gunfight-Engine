@@ -48,12 +48,20 @@ public class MetricsReporter {
         if (tickCount == 0) {
             return;
         }
-        log.info("Game metrics — ticks: {}, avg tick: {}ms, max tick: {}ms, avg broadcast: {}ms, max broadcast: {}ms",
+        long windowSeconds = intervalSeconds == 0 ? 60 : intervalSeconds;
+        double packetsPerSecond = metrics.getPacketCount() / (double) windowSeconds;
+        double bytesPerSecond = metrics.getByteCount() / (double) windowSeconds;
+        log.info("Game metrics — ticks: {}, avg tick: {}ms, max tick: {}ms, avg broadcast: {}ms, max broadcast: {}ms, avg serialize: {}ms, max serialize: {}ms, packets/s: {:.1f}, bytes/s: {:.0f}, avg packet: {:.0f}B",
             tickCount,
             String.format("%.3f", metrics.getAverageTickMs()),
             String.format("%.3f", metrics.getMaxTickMs()),
             String.format("%.3f", metrics.getAverageBroadcastMs()),
-            String.format("%.3f", metrics.getMaxBroadcastMs())
+            String.format("%.3f", metrics.getMaxBroadcastMs()),
+            String.format("%.3f", metrics.getAverageSerializationMs()),
+            String.format("%.3f", metrics.getMaxSerializationMs()),
+            packetsPerSecond,
+            bytesPerSecond,
+            metrics.getAveragePacketBytes()
         );
         metrics.reset();
     }
